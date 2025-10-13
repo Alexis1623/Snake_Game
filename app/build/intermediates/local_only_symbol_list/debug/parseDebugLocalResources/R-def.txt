@@ -1,0 +1,27 @@
+R_DEF: Internal format may change without notice
+local
+color black
+color purple_200
+color purple_500
+color purple_700
+color teal_200
+color teal_700
+color white
+drawable button_retro_style
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+font vcr_osd_mono_1_001
+id btnExit
+id btnScores
+id btnSettings
+id btnStartGame
+id imageView2
+id titleText
+layout activity_main
+mipmap ic_launcher
+mipmap ic_launcher_round
+mipmap imgsnake
+string app_name
+style Theme.Test_Snake
+xml backup_rules
+xml data_extraction_rules
