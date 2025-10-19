@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#121212"
@@ -12,21 +11,6 @@
     <!-- Título del juego -->
 
     <!-- Contenedor HORIZONTAL principal para los botones -->
-
-    <Button
-        android:id="@+id/btnSettings4"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_margin="6dp"
-        android:layout_weight="1"
-        android:background="@drawable/button_retro_style"
-        android:fontFamily="@font/vcr_osd_mono_1_001"
-        android:letterSpacing="0.05"
-        android:text="CONFIGURACIÓN"
-        android:textColor="#00FF00"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-
     <TextView
         android:id="@+id/titleText"
         android:layout_width="wrap_content"
@@ -46,11 +30,9 @@
         android:layout_height="134dp"
         app:srcCompat="@mipmap/imgsnake" />
 
-    <!-- Texto inferior estilo retro -->
-
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="164dp"
+        android:layout_height="wrap_content"
         android:layout_marginBottom="60dp"
         android:gravity="center"
         android:orientation="horizontal"
@@ -68,7 +50,7 @@
             <Button
                 android:id="@+id/btnStartGame"
                 android:layout_width="180dp"
-                android:layout_height="40dp"
+                android:layout_height="60dp"
                 android:layout_margin="6dp"
                 android:background="@drawable/button_retro_style"
                 android:fontFamily="@font/vcr_osd_mono_1_001"
@@ -82,7 +64,7 @@
             <Button
                 android:id="@+id/btnScores"
                 android:layout_width="180dp"
-                android:layout_height="40dp"
+                android:layout_height="60dp"
                 android:layout_margin="6dp"
                 android:background="@drawable/button_retro_style"
                 android:fontFamily="@font/vcr_osd_mono_1_001"
@@ -95,7 +77,6 @@
         </LinearLayout>
 
         <!-- Columna derecha - 2 botones -->
-
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -107,7 +88,7 @@
             <Button
                 android:id="@+id/btnSettings"
                 android:layout_width="180dp"
-                android:layout_height="40dp"
+                android:layout_height="60dp"
                 android:layout_margin="6dp"
                 android:background="@drawable/button_retro_style"
                 android:fontFamily="@font/vcr_osd_mono_1_001"
@@ -122,35 +103,21 @@
             <Button
                 android:id="@+id/btnExit"
                 android:layout_width="180dp"
-                android:layout_height="50dp"
-                android:text="Tienda"
+                android:layout_height="60dp"
+                android:layout_margin="6dp"
+                android:background="@drawable/button_retro_style"
+                android:fontFamily="@font/vcr_osd_mono_1_001"
+                android:letterSpacing="0.05"
+                android:text="SALIR"
                 android:textColor="#00FF00"
-                tools:visibility="visible" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="362dp"
-        android:layout_height="129dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical">
-
-        <!-- Botón Configuración -->
-
-        <!-- Botón Salir -->
-
-        <Button
-            android:id="@+id/btnExit"
-            android:layout_width="180dp"
-            android:layout_height="60dp"
-            android:text="Salir"
-            android:textColor="#00FF00"
-            tools:visibility="visible" />
-    </LinearLayout>
-
+    <!-- Texto inferior estilo retro -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

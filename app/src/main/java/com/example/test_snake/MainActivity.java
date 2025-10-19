@@ -29,23 +29,20 @@ public class MainActivity extends AppCompatActivity {
         btnStartGame.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Aquí iniciaremos el juego después
-                // startActivity(new Intent(MainActivity.this, GameActivity.class));
+                startActivity(new Intent(MainActivity.this, GameActivity.class));
             }
         });
 
         btnSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Para configuración
-                // startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
 
         btnScores.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Para puntuaciones
                 startActivity(new Intent(MainActivity.this, ScoresActivity.class));
             }
         });
@@ -53,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         btnExit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish(); // Cerrar la aplicación
+                finish();
             }
         });
     }
