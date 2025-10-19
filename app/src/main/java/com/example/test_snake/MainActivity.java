@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 // Para puntuaciones
-                // startActivity(new Intent(MainActivity.this, ScoresActivity.class));
+                startActivity(new Intent(MainActivity.this, ScoresActivity.class));
             }
         });
 
