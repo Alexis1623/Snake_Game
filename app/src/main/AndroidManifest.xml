@@ -13,6 +13,7 @@
         android:theme="@style/Theme.Test_Snake"
         tools:targetApi="31">
 
+        <!-- Actividad Principal - Menú (VERTICAL) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +24,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Actividad del Juego (HORIZONTAL) -->
+        <activity
+            android:name=".GameActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
+
+        <!-- Actividad de Configuración (VERTICAL) -->
+        <activity
+            android:name=".SettingsActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Actividad de Puntuaciones (VERTICAL) -->
+        <activity
+            android:name=".ScoresActivity"
+            android:screenOrientation="portrait" />
 
     </application>
 
