@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E7DDDD"
+    tools:context=".ConfigMenu">
+
+    <Button
+        android:id="@+id/btn_salir"
+        android:layout_width="196dp"
+        android:layout_height="63dp"
+        android:text="Salir"
+        android:textColor="#00BCD4"
+        tools:layout_editor_absoluteX="58dp"
+        tools:layout_editor_absoluteY="650dp" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/txt_config"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CONFIGURACIÓN"
+        android:textColor="#00BCD4"
+        android:textColorLink="#00BCD4"
+        android:textSize="20sp"
+        tools:layout_editor_absoluteX="135dp"
+        tools:layout_editor_absoluteY="110dp" />
+
+    <Button
+        android:id="@+id/btn_volumen"
+        android:layout_width="200dp"
+        android:layout_height="64dp"
+        android:text="volumen"
+        android:textColor="#00BCD4"
+        tools:layout_editor_absoluteX="58dp"
+        tools:layout_editor_absoluteY="390dp" />
+
+    <SeekBar
+        android:id="@+id/sbar_Volumen"
+        android:layout_width="115dp"
+        android:layout_height="39dp"
+        android:backgroundTint="#542323"
+        tools:layout_editor_absoluteX="273dp"
+        tools:layout_editor_absoluteY="409dp" />
+
+    <Button
+        android:id="@+id/btn_creditos"
+        android:layout_width="199dp"
+        android:layout_height="65dp"
+        android:text="CREDITOS"
+        android:textColor="#00BCD4"
+        tools:layout_editor_absoluteX="58dp"
+        tools:layout_editor_absoluteY="475dp" />
+
+    <Switch
+        android:id="@+id/sw_musica"
+        android:layout_width="109dp"
+        android:layout_height="49dp"
+        android:checked="false"
+        android:clickable="false"
+        android:shadowColor="#D3C9C9"
+        android:switchTextAppearance="On"
+        android:text="On/Off"
+        android:textColor="#00BCD4"
+        android:textColorLink="#C5A5A5"
+        android:textOff="Off"
+        android:textOn="On"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        tools:layout_editor_absoluteX="273dp"
+        tools:layout_editor_absoluteY="323dp" />
+
+    <Button
+        android:id="@+id/btn_musica"
+        android:layout_width="204dp"
+        android:layout_height="62dp"
+        android:text="MUSICA"
+        android:textColor="#00BCD4"
+        tools:layout_editor_absoluteX="56dp"
+        tools:layout_editor_absoluteY="310dp" />
+
+    <SeekBar
+        android:id="@+id/seekBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/button6"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Button" />
+
+    <Button
+        android:id="@+id/btn_reanudar"
+        android:layout_width="200dp"
+        android:layout_height="66dp"
+        android:text="Reanudar"
+        android:textColor="#00BCD4"
+        android:textSize="14sp"
+        tools:layout_editor_absoluteX="58dp"
+        tools:layout_editor_absoluteY="222dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
