@@ -53,5 +53,12 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         });
+        // En MainActivity.java
+        btnSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, ConfigMenu.class));
+            }
+        });
     }
 }
