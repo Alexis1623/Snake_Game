@@ -11,7 +11,6 @@ public class GameActivity extends AppCompatActivity {
     private GameView gameView;
     private Button btnUp, btnDown, btnLeft, btnRight;
     private TextView scoreText;
-    private int score = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +27,9 @@ public class GameActivity extends AppCompatActivity {
 
         // Configurar listeners
         setupControlListeners();
-        updateScore();
+
+        // Actualizar puntuación periódicamente
+        startScoreUpdate();
     }
 
     private void setupControlListeners() {
@@ -36,8 +37,6 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 gameView.setDirectionUp();
-                score += 5;
-                updateScore();
             }
         });
 
@@ -45,8 +44,6 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 gameView.setDirectionDown();
-                score += 5;
-                updateScore();
             }
         });
 
@@ -54,8 +51,6 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 gameView.setDirectionLeft();
-                score += 5;
-                updateScore();
             }
         });
 
@@ -63,14 +58,31 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 gameView.setDirectionRight();
-                score += 5;
-                updateScore();
             }
         });
     }
 
-    private void updateScore() {
-        scoreText.setText("PUNTUACIÓN: " + score);
+    private void startScoreUpdate() {
+        // Actualizar puntuación cada 100ms
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!isFinishing()) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scoreText.setText("PUNTUACIÓN: " + gameView.getScore());
+                        }
+                    });
+
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
     }
 
     @Override

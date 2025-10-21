@@ -4,54 +4,54 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- GameView - Área principal del juego -->
+    <!-- GameView optimizado para diferentes pantallas -->
     <com.example.test_snake.GameView
         android:id="@+id/gameView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_toLeftOf="@+id/controllerPanel" />
 
-    <!-- Panel de puntuación -->
+    <!-- Panel de puntuación mejorado -->
     <TextView
         android:id="@+id/scoreText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="20dp"
-        android:text="PUNTUACIÓN: 0"
+        android:layout_marginTop="15dp"
+        android:text="SCORE: 0"
         android:textColor="#00FF00"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:fontFamily="@font/vcr_osd_mono_1_001"
-        android:background="#40000000"
-        android:padding="10dp" />
+        android:background="#80000000"
+        android:padding="8dp" />
 
-    <!-- Panel de controles a la derecha -->
+    <!-- Panel de controles responsive -->
     <LinearLayout
         android:id="@+id/controllerPanel"
-        android:layout_width="200dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
-        android:layout_alignParentRight="true"
-        android:layout_margin="16dp"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="12dp"
         android:orientation="vertical"
         android:gravity="center"
-        android:background="#20000000"
-        android:padding="15dp">
+        android:background="#40000000"
+        android:padding="12dp">
 
         <!-- Flecha arriba -->
         <Button
             android:id="@+id/btnUp"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:background="@drawable/button_arrow"
             android:text="↑"
             android:textColor="#00FF00"
-            android:textSize="28sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:fontFamily="@font/vcr_osd_mono_1_001"
-            android:layout_margin="5dp" />
+            android:layout_margin="4dp" />
 
         <!-- Flechas izquierda y derecha -->
         <LinearLayout
@@ -62,42 +62,42 @@
 
             <Button
                 android:id="@+id/btnLeft"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
                 android:background="@drawable/button_arrow"
                 android:text="←"
                 android:textColor="#00FF00"
-                android:textSize="28sp"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/vcr_osd_mono_1_001"
-                android:layout_margin="5dp" />
+                android:layout_margin="4dp" />
 
             <Button
                 android:id="@+id/btnRight"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
                 android:background="@drawable/button_arrow"
                 android:text="→"
                 android:textColor="#00FF00"
-                android:textSize="28sp"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/vcr_osd_mono_1_001"
-                android:layout_margin="5dp" />
+                android:layout_margin="4dp" />
 
         </LinearLayout>
 
         <!-- Flecha abajo -->
         <Button
             android:id="@+id/btnDown"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:background="@drawable/button_arrow"
             android:text="↓"
             android:textColor="#00FF00"
-            android:textSize="28sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:fontFamily="@font/vcr_osd_mono_1_001"
-            android:layout_margin="5dp" />
+            android:layout_margin="4dp" />
 
     </LinearLayout>
 
