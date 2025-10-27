@@ -8,19 +8,30 @@ import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 public class MainActivity extends AppCompatActivity {
 
     private Button btnStartGame, btnSettings, btnScores, btnExit;
     private Button btnEditUser, btnLogout;
-    private TextView tvUsername;
+    private TextView tvUsername; // Solo un TextView ahora
+
+    private DatabaseReference databaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Inicializar Firebase
+        databaseReference = FirebaseDatabase.getInstance().getReference();
+
         // Inicializar vistas
-        tvUsername = findViewById(R.id.tvUsername);
+        tvUsername = findViewById(R.id.tvUsername); // Este mostrará "Hola, [usuario de Firebase]"
         btnEditUser = findViewById(R.id.btnEditUser);
         btnLogout = findViewById(R.id.btnLogout);
 
@@ -29,16 +40,59 @@ public class MainActivity extends AppCompatActivity {
         btnScores = findViewById(R.id.btnScores);
         btnExit = findViewById(R.id.btnExit);
 
-        // Mostrar username (preferir extra de intent si viene)
-        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
-        String username = getIntent().getStringExtra("username");
-        if (username == null || username.isEmpty()) {
-            username = prefs.getString("username", "Invitado");
-        }
-        tvUsername.setText("Hola, " + username);
+        // Cargar mensaje desde Firebase que incluirá el "Hola,"
+        loadMessageFromFirebase();
 
         // Listeners
         setupButtonListeners();
+    }
+
+    private void loadMessageFromFirebase() {
+        // Referencia a la base de datos
+        DatabaseReference messageRef = databaseReference.child("message");
+
+        messageRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                String username;
+                if (dataSnapshot.exists()) {
+                    String message = dataSnapshot.getValue(String.class);
+                    if (message != null && !message.isEmpty()) {
+                        username = message;
+                    } else {
+                        // Si no hay mensaje en Firebase, usar el de SharedPreferences
+                        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+                        username = getIntent().getStringExtra("username");
+                        if (username == null || username.isEmpty()) {
+                            username = prefs.getString("username", "Invitado");
+                        }
+                    }
+                } else {
+                    // Si no existe el nodo, usar SharedPreferences
+                    SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+                    username = getIntent().getStringExtra("username");
+                    if (username == null || username.isEmpty()) {
+                        username = prefs.getString("username", "Invitado");
+                    }
+                    // Opcional: guardar en Firebase para la próxima vez
+                    messageRef.setValue(username);
+                }
+
+                // Mostrar en el TextView
+                tvUsername.setText("Hola, " + username);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // En caso de error, usar SharedPreferences
+                SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+                String username = getIntent().getStringExtra("username");
+                if (username == null || username.isEmpty()) {
+                    username = prefs.getString("username", "Invitado");
+                }
+                tvUsername.setText("Hola, " + username);
+            }
+        });
     }
 
     private void setupButtonListeners() {
@@ -73,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
         btnEditUser.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Abrir LoginActivity en modo edición
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                 intent.putExtra("force_edit", true);
                 startActivity(intent);
@@ -84,7 +137,6 @@ public class MainActivity extends AppCompatActivity {
         btnLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Borrar username y volver al LoginActivity
                 SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                 prefs.edit().remove("username").apply();
 
@@ -94,5 +146,11 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Limpiar listeners si es necesario
     }
 }

@@ -9,7 +9,7 @@
     android:orientation="vertical"
     android:padding="20dp">
 
-    <!-- Usuario y acciones (añadido) -->
+    <!-- Usuario y acciones -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -48,30 +48,16 @@
 
     </LinearLayout>
 
+    <!-- Mensaje de Firebase - POSICIÓN MEJORADA -->
+
+
     <!-- Título del juego -->
-
-    <!-- Contenedor HORIZONTAL principal para los botones -->
-
-    <Button
-        android:id="@+id/btnSettings4"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_margin="6dp"
-        android:layout_weight="1"
-        android:background="@drawable/button_retro_style"
-        android:fontFamily="@font/vcr_osd_mono_1_001"
-        android:letterSpacing="0.05"
-        android:text="CONFIGURACIÓN"
-        android:textColor="#00FF00"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-
     <TextView
         android:id="@+id/titleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:layout_marginBottom="100dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="60dp"
         android:fontFamily="@font/vcr_osd_mono_1_001"
         android:letterSpacing="0.1"
         android:text="SNAKE GAME"
@@ -85,8 +71,7 @@
         android:layout_height="134dp"
         app:srcCompat="@mipmap/imgsnake" />
 
-    <!-- Texto inferior estilo retro -->
-
+    <!-- Contenedor principal de botones -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="164dp"
@@ -134,7 +119,6 @@
         </LinearLayout>
 
         <!-- Columna derecha - 2 botones -->
-
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -156,8 +140,7 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <!-- Botón Salir -->
-
+            <!-- Botón Tienda -->
             <Button
                 android:id="@+id/btnTienda"
                 android:layout_width="180dp"
@@ -170,16 +153,13 @@
 
     </LinearLayout>
 
+    <!-- Botón Salir -->
     <LinearLayout
         android:layout_width="362dp"
         android:layout_height="129dp"
         android:layout_weight="1"
         android:gravity="center"
         android:orientation="vertical">
-
-        <!-- Botón Configuración -->
-
-        <!-- Botón Salir -->
 
         <Button
             android:id="@+id/btnExit"
@@ -190,6 +170,7 @@
             tools:visibility="visible" />
     </LinearLayout>
 
+    <!-- Texto inferior -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
