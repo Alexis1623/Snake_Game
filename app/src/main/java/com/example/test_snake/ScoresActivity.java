@@ -1,6 +1,8 @@
 package com.example.test_snake;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -17,10 +19,18 @@ public class ScoresActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scores);
 
+        // Mostrar usuario en el título
+        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+        String username = prefs.getString("username", "Invitado");
+        TextView tvTitle = findViewById(R.id.tvTitle);
+        if (tvTitle != null) {
+            tvTitle.setText("TOP SCORES");
+        }
+
         rvScores = findViewById(R.id.rvScores);
         rvScores.setLayoutManager(new LinearLayoutManager(this));
 
-        // Datos de ejemplo
+        // Datos de ejemplo (estáticos)
         List<Score> scores = new ArrayList<>();
         scores.add(new Score(1, "djWoody", 30001));
         scores.add(new Score(2, "repose", 30000));

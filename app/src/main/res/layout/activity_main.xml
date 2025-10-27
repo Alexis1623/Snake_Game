@@ -9,6 +9,45 @@
     android:orientation="vertical"
     android:padding="20dp">
 
+    <!-- Usuario y acciones (añadido) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:id="@+id/tvUsername"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Hola, Invitado"
+            android:textColor="#00FF00"
+            android:textSize="16sp"
+            android:fontFamily="@font/vcr_osd_mono_1_001" />
+
+        <Button
+            android:id="@+id/btnEditUser"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginEnd="8dp"
+            android:text="Editar"
+            android:textColor="#00FF00"
+            android:background="@drawable/button_retro_style"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btnLogout"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Salir Sesión"
+            android:textColor="#00FF00"
+            android:background="@drawable/button_retro_style"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
     <!-- Título del juego -->
 
     <!-- Contenedor HORIZONTAL principal para los botones -->

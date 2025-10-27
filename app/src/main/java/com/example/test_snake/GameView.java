@@ -183,9 +183,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void gameOver() {
-        // Reiniciar juego
+        // Reiniciar juego (SIN guardar puntuación)
         initGame();
     }
+
 
     private void drawGame(Canvas canvas) {
         // Fondo
