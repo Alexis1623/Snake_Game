@@ -151,6 +151,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Limpiar listeners si es necesario
+        // Limpiar
     }
 }
