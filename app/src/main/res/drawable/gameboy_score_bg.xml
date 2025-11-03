@@ -4,12 +4,47 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- GameView  -->
-    <com.example.test_snake.GameView
-        android:id="@+id/gameView"
+    <!-- Contenedor principal con bordes blancos -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_toLeftOf="@+id/controllerPanel" />
+        android:background="#000000"
+        android:padding="2dp">
+
+        <!-- GameView dentro de los bordes blancos -->
+        <com.example.test_snake.GameView
+            android:id="@+id/gameView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_toLeftOf="@+id/controllerPanel"
+            android:background="#000000" />
+
+    </FrameLayout>
+
+    <!-- Bordes blancos que marcan los límites del juego -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:background="#FFFFFF"
+        android:layout_alignParentTop="true" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:background="#FFFFFF"
+        android:layout_alignParentBottom="true" />
+
+    <View
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:layout_alignParentLeft="true" />
+
+    <View
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:layout_alignParentRight="true" />
 
     <!-- Panel de puntuación estilo GameBoy -->
     <TextView
@@ -19,13 +54,13 @@
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="15dp"
-        android:background="#80000000"
-        android:fontFamily="@font/vcr_osd_mono_1_001"
-        android:padding="3dp"
         android:text="SCORE: 0"
         android:textColor="#00FF00"
         android:textSize="18sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:fontFamily="@font/vcr_osd_mono_1_001"
+        android:background="#80000000"
+        android:padding="8dp" />
 
     <!-- Panel de controles estilo GameBoy -->
     <LinearLayout
@@ -42,25 +77,25 @@
 
         <!-- Imagen de la serpiente al lado de los controles -->
         <ImageView
-            android:layout_width="67dp"
-            android:layout_height="48dp"
-            android:layout_marginBottom="15dp"
-            android:contentDescription="Snake character"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:src="@mipmap/imgsnake"
             android:scaleType="fitCenter"
-            android:src="@mipmap/imgsnake" />
+            android:layout_marginBottom="15dp"
+            android:contentDescription="Snake character" />
 
         <!-- Flecha arriba -->
         <Button
             android:id="@+id/btnUp"
-            android:layout_width="44dp"
-            android:layout_height="46dp"
-            android:layout_margin="4dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:background="@drawable/gameboy_button"
-            android:fontFamily="@font/vcr_osd_mono_1_001"
             android:text="↑"
             android:textColor="#00FF00"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:fontFamily="@font/vcr_osd_mono_1_001"
+            android:layout_margin="4dp" />
 
         <!-- Flechas izquierda y derecha -->
         <LinearLayout
@@ -71,42 +106,42 @@
 
             <Button
                 android:id="@+id/btnLeft"
-                android:layout_width="44dp"
-                android:layout_height="56dp"
-                android:layout_margin="4dp"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
                 android:background="@drawable/gameboy_button"
-                android:fontFamily="@font/vcr_osd_mono_1_001"
                 android:text="←"
                 android:textColor="#00FF00"
                 android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:fontFamily="@font/vcr_osd_mono_1_001"
+                android:layout_margin="4dp" />
 
             <Button
                 android:id="@+id/btnRight"
-                android:layout_width="50dp"
-                android:layout_height="wrap_content"
-                android:layout_margin="4dp"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
                 android:background="@drawable/gameboy_button"
-                android:fontFamily="@font/vcr_osd_mono_1_001"
                 android:text="→"
                 android:textColor="#00FF00"
                 android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:fontFamily="@font/vcr_osd_mono_1_001"
+                android:layout_margin="4dp" />
 
         </LinearLayout>
 
         <!-- Flecha abajo -->
         <Button
             android:id="@+id/btnDown"
-            android:layout_width="41dp"
-            android:layout_height="50dp"
-            android:layout_margin="4dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:background="@drawable/gameboy_button"
-            android:fontFamily="@font/vcr_osd_mono_1_001"
             android:text="↓"
             android:textColor="#00FF00"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:fontFamily="@font/vcr_osd_mono_1_001"
+            android:layout_margin="4dp" />
 
     </LinearLayout>
 

@@ -6,13 +6,14 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
+import android.graphics.BitmapFactory;
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
     private Thread gameThread;
@@ -140,19 +141,18 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
 
             try {
-                Thread.sleep(10); // <-- Descanso pequeño (10-16 ms)
+                Thread.sleep(12); // 60 FPS
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
 
-
     private void updateGame() {
-        // Actualizar dirección
+        // Actualizar dirección con la siguiente dirección pendiente
         currentDirection = nextDirection;
 
-        // Mover serpiente
+        // Mover serpiente - obtener la cabeza actual y calcular nueva posición
         Point head = new Point(snake.get(0));
         switch (currentDirection) {
             case UP: head.y--; break;
@@ -175,7 +175,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
         }
 
-        // Agregar nueva cabeza
+        // Agregar nueva cabeza a la serpiente
         snake.add(0, head);
 
         // Verificar si comió comida
@@ -184,38 +184,86 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             generateFood();
             // No remover cola para hacer crecer la serpiente
         } else {
-            // Remover cola si no comió
+            // Remover cola si no comió (mantener mismo tamaño)
             snake.remove(snake.size() - 1);
         }
     }
 
     private void gameOver() {
-        // Reiniciar juego (SIN guardar puntuación)
+        // Reiniciar juego
         initGame();
     }
 
-
     private void drawGame(Canvas canvas) {
-        // Fondo
+        // Fondo negro completo
         canvas.drawColor(Color.BLACK);
 
-        // Calcular margenes para centrar el juego
-        int gridWidthPx = GRID_WIDTH * BLOCK_SIZE;
-        int gridHeightPx = GRID_HEIGHT * BLOCK_SIZE;
-        int offsetX = (getWidth() - gridWidthPx - 250) / 2; // Dejar espacio para controles
+        // CALCULO MODIFICADO para área de juego más grande
+        int availableWidth = getWidth() - 300; // Dejar 300px para controles + margen
+        int availableHeight = getHeight() - 40; // Dejar margen superior e inferior
+
+        // Calcular el tamaño máximo que quepa en el espacio disponible
+        int maxGridSize = Math.min(availableWidth, availableHeight);
+
+        // Calcular BLOCK_SIZE dinámico basado en el espacio disponible
+        int dynamicBlockSize = maxGridSize / Math.max(GRID_WIDTH, GRID_HEIGHT);
+
+        int gridWidthPx = GRID_WIDTH * dynamicBlockSize;
+        int gridHeightPx = GRID_HEIGHT * dynamicBlockSize;
+
+        // Centrar el área de juego
+        int offsetX = (getWidth() - gridWidthPx - 300) / 2;
         int offsetY = (getHeight() - gridHeightPx) / 2;
 
-        // Dibujar comida (punto blanco)
+        // DIBUJAR IMAGEN DE FONDO con opacidad (solo dentro del área del juego)
+        try {
+            // Cargar la imagen de fondo
+            android.graphics.Bitmap backgroundBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
+
+            if (backgroundBitmap != null) {
+                // Crear un paint con opacidad (alpha)
+                Paint backgroundPaint = new Paint();
+                backgroundPaint.setAlpha(100); // 100/255 = ~40% de opacidad
+
+                // Dibujar la imagen de fondo escalada al tamaño del área de juego
+                Rect destRect = new Rect(offsetX, offsetY, offsetX + gridWidthPx, offsetY + gridHeightPx);
+                canvas.drawBitmap(backgroundBitmap, null, destRect, backgroundPaint);
+            }
+        } catch (Exception e) {
+            // Si hay error cargando la imagen, solo dibujar fondo negro
+            canvas.drawColor(Color.BLACK);
+        }
+
+        // DIBUJAR BORDES BLANCOS como límites del juego
+        paint.setColor(Color.WHITE);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(4);
+        paint.setAlpha(255);
+
+        // Dibujar rectángulo que marca los límites del juego
+        Rect borderRect = new Rect(
+                offsetX,
+                offsetY,
+                offsetX + gridWidthPx,
+                offsetY + gridHeightPx
+        );
+        canvas.drawRect(borderRect, paint);
+
+        // Volver al estilo FILL para los demás elementos
+        paint.setStyle(Paint.Style.FILL);
+        paint.setAlpha(255);
+
+        // Dibujar comida (punto blanco) - DENTRO de los bordes
         paint.setColor(Color.WHITE);
         Rect foodRect = new Rect(
-                offsetX + food.x * BLOCK_SIZE,
-                offsetY + food.y * BLOCK_SIZE,
-                offsetX + (food.x + 1) * BLOCK_SIZE,
-                offsetY + (food.y + 1) * BLOCK_SIZE
+                offsetX + food.x * dynamicBlockSize,
+                offsetY + food.y * dynamicBlockSize,
+                offsetX + (food.x + 1) * dynamicBlockSize,
+                offsetY + (food.y + 1) * dynamicBlockSize
         );
         canvas.drawRect(foodRect, paint);
 
-        // Dibujar serpiente
+        // Dibujar serpiente - DENTRO de los bordes
         for (int i = 0; i < snake.size(); i++) {
             Point segment = snake.get(i);
 
@@ -228,10 +276,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
 
             Rect segmentRect = new Rect(
-                    offsetX + segment.x * BLOCK_SIZE,
-                    offsetY + segment.y * BLOCK_SIZE,
-                    offsetX + (segment.x + 1) * BLOCK_SIZE,
-                    offsetY + (segment.y + 1) * BLOCK_SIZE
+                    offsetX + segment.x * dynamicBlockSize,
+                    offsetY + segment.y * dynamicBlockSize,
+                    offsetX + (segment.x + 1) * dynamicBlockSize,
+                    offsetY + (segment.y + 1) * dynamicBlockSize
             );
             canvas.drawRect(segmentRect, paint);
 
@@ -246,11 +294,16 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Dibujar información
         drawGameInfo(canvas);
     }
-
     private void drawGameInfo(Canvas canvas) {
         paint.setColor(Color.WHITE);
         paint.setTextSize(36);
-        paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
+
+        // Usar fuente monospace si la fuente personalizada falla
+        try {
+            paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
+        } catch (Exception e) {
+            paint.setTypeface(Typeface.MONOSPACE);
+        }
 
         // Puntuación
         canvas.drawText("PUNTUACIÓN: " + score, 50, 50, paint);
