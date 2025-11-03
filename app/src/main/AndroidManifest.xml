@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.test_snake">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -8,31 +12,51 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Test_Snake">
+        android:theme="@style/Theme.Test_Snake"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
 
+        <!-- MainActivity - VERTICAL (Actividad Principal) -->
         <activity
-            android:name=".LoginActivity"
-            android:exported="true">
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboardHidden|orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- LoginActivity - VERTICAL (ELIMINAR intent-filter) -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
+        <!-- GameActivity - HORIZONTAL -->
         <activity
             android:name=".GameActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="false" />
 
+        <!-- ConfigMenu - VERTICAL -->
+        <activity
+            android:name=".ConfigMenu"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+
+        <!-- SettingsActivity - VERTICAL -->
         <activity
             android:name=".SettingsActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
+        <!-- ScoresActivity - VERTICAL -->
         <activity
             android:name=".ScoresActivity"
+            android:screenOrientation="portrait"
             android:exported="false" />
 
     </application>

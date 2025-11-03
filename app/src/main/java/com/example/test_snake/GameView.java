@@ -138,8 +138,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 drawGame(canvas);
                 holder.unlockCanvasAndPost(canvas);
             }
+
+            try {
+                Thread.sleep(10); // <-- Descanso pequeño (10-16 ms)
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
+
 
     private void updateGame() {
         // Actualizar dirección
