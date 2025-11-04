@@ -12,13 +12,13 @@ public class ConfigMenu extends AppCompatActivity {
     private Switch switchMusica;
     private SeekBar seekBarVolumen;
     private Button btnSalir, btnCreditos, btnReanudar;
-
+    // testing de sebas commit
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_config_menu);
 
-        // Inicializar vistas
+        // Inicializar vistassssssss
         switchMusica = findViewById(R.id.sw_musica);
         seekBarVolumen = findViewById(R.id.sbar_Volumen);
         btnSalir = findViewById(R.id.btn_salir);
