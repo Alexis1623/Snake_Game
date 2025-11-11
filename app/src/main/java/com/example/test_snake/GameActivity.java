@@ -11,7 +11,7 @@ public class GameActivity extends AppCompatActivity {
     private GameView gameView;
     private Button btnUp, btnDown, btnLeft, btnRight;
     private TextView scoreText;
-
+// s
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
