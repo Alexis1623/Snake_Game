@@ -144,10 +144,15 @@
             <Button
                 android:id="@+id/btnTienda"
                 android:layout_width="180dp"
-                android:layout_height="50dp"
-                android:text="Tienda"
+                android:layout_height="40dp"
+                android:layout_margin="6dp"
+                android:text="TIENDA"
                 android:textColor="#00FF00"
-                tools:visibility="visible" />
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:background="@drawable/button_retro_style"
+                android:fontFamily="@font/vcr_osd_mono_1_001"
+                android:letterSpacing="0.05" />
 
         </LinearLayout>
 

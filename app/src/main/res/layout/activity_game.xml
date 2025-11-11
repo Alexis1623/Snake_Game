@@ -108,6 +108,20 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:id="@+id/coinsText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/scoreText"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="4dp"
+            android:background="#80000000"
+            android:fontFamily="@font/vcr_osd_mono_1_001"
+            android:padding="3dp"
+            android:text="MONEDAS: 0"
+            android:textColor="#FFD700"
+            android:textSize="16sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
 </RelativeLayout>

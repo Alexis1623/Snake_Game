@@ -18,7 +18,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnStartGame, btnSettings, btnScores, btnExit;
     private Button btnEditUser, btnLogout;
-    private TextView tvUsername; // Solo un TextView ahora
+    private Button btnTienda;  // Botón de la tienda
+    private TextView tvUsername;
 
     private DatabaseReference databaseReference;
 
@@ -31,24 +32,25 @@ public class MainActivity extends AppCompatActivity {
         databaseReference = FirebaseDatabase.getInstance().getReference();
 
         // Inicializar vistas
-        tvUsername = findViewById(R.id.tvUsername); // Este mostrará "Hola, [usuario de Firebase]"
-        btnEditUser = findViewById(R.id.btnEditUser);
-        btnLogout = findViewById(R.id.btnLogout);
+        tvUsername   = findViewById(R.id.tvUsername);
+        btnEditUser  = findViewById(R.id.btnEditUser);
+        btnLogout    = findViewById(R.id.btnLogout);
 
         btnStartGame = findViewById(R.id.btnStartGame);
-        btnSettings = findViewById(R.id.btnSettings);
-        btnScores = findViewById(R.id.btnScores);
-        btnExit = findViewById(R.id.btnExit);
+        btnSettings  = findViewById(R.id.btnSettings);
+        btnScores    = findViewById(R.id.btnScores);
+        btnExit      = findViewById(R.id.btnExit);
+        btnTienda    = findViewById(R.id.btnTienda);  // Se inicializa el botón de tienda
 
         // Cargar mensaje desde Firebase que incluirá el "Hola,"
         loadMessageFromFirebase();
 
-        // Listeners
+        // Configurar listeners de los botones
         setupButtonListeners();
     }
 
     private void loadMessageFromFirebase() {
-        // Referencia a la base de datos
+        // Referencia al nodo "message"
         DatabaseReference messageRef = databaseReference.child("message");
 
         messageRef.addValueEventListener(new ValueEventListener() {
@@ -60,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
                     if (message != null && !message.isEmpty()) {
                         username = message;
                     } else {
-                        // Si no hay mensaje en Firebase, usar el de SharedPreferences
                         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                         username = getIntent().getStringExtra("username");
                         if (username == null || username.isEmpty()) {
@@ -68,17 +69,14 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    // Si no existe el nodo, usar SharedPreferences
                     SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                     username = getIntent().getStringExtra("username");
                     if (username == null || username.isEmpty()) {
                         username = prefs.getString("username", "Invitado");
                     }
-                    // Opcional: guardar en Firebase para la próxima vez
+                    // Guardar valor por defecto en Firebase
                     messageRef.setValue(username);
                 }
-
-                // Mostrar en el TextView
                 tvUsername.setText("Hola, " + username);
             }
 
@@ -146,11 +144,20 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
         });
+
+        // Listener para abrir la tienda
+        btnTienda.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Lanzar la actividad de la tienda
+                startActivity(new Intent(MainActivity.this, StoreActivity.class));
+            }
+        });
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Limpiar
+        // Limpia recursos
     }
 }
