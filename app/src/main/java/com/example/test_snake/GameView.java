@@ -1,6 +1,7 @@
 package com.example.test_snake;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import android.graphics.BitmapFactory;
+
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
     private Thread gameThread;
@@ -30,7 +32,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     // Serpiente
     private List<Point> snake;
     private Direction currentDirection = Direction.RIGHT;
-    private Direction nextDirection = Direction.RIGHT;
+    private Direction nextDirection    = Direction.RIGHT;
 
     // Comida
     private Point food;
@@ -38,6 +40,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     // Tiempo
     private long lastUpdateTime = 0;
     private static final long UPDATE_INTERVAL = 200; // ms entre movimientos
+
+    // Sistema de monedas
+    private int coins = 0;               // Cantidad de monedas acumuladas
+    private boolean isGolden = false;    // Marca si la manzana actual es dorada (vale 5 monedas)
+    private Random random = new Random();// Generador de números aleatorios
+    private SharedPreferences prefs;     // Preferencias para persistir las monedas
 
     // Direcciones
     private enum Direction {
@@ -65,6 +73,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         holder.addCallback(this);
         paint = new Paint();
         setFocusable(true);
+
+        // Inicializar preferencias y cargar monedas guardadas
+        prefs = getContext().getSharedPreferences("SnakePrefs", Context.MODE_PRIVATE);
+        coins = prefs.getInt("coins", 0);
+
         initGame();
     }
 
@@ -78,13 +91,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Generar primera comida
         generateFood();
 
-        score = 0;
+        score           = 0;
         currentDirection = Direction.RIGHT;
-        nextDirection = Direction.RIGHT;
+        nextDirection    = Direction.RIGHT;
     }
 
     private void generateFood() {
-        Random random = new Random();
         while (true) {
             int x = random.nextInt(GRID_WIDTH);
             int y = random.nextInt(GRID_HEIGHT);
@@ -98,14 +110,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     break;
                 }
             }
-
             if (!collision) break;
         }
+        // Determinar si la fruta es dorada (20% de probabilidad)
+        isGolden = random.nextFloat() < 0.2;
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        running = true;
+        running    = true;
         gameThread = new Thread(this);
         gameThread.start();
     }
@@ -155,9 +168,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Mover serpiente - obtener la cabeza actual y calcular nueva posición
         Point head = new Point(snake.get(0));
         switch (currentDirection) {
-            case UP: head.y--; break;
-            case DOWN: head.y++; break;
-            case LEFT: head.x--; break;
+            case UP:    head.y--; break;
+            case DOWN:  head.y++; break;
+            case LEFT:  head.x--; break;
             case RIGHT: head.x++; break;
         }
 
@@ -180,7 +193,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         // Verificar si comió comida
         if (head.equals(food)) {
+            // Incrementar puntuación (mantiene compatibilidad con el juego original)
             score += 10;
+            // Actualizar monedas según el tipo de manzana
+            coins += isGolden ? 5 : 1;
+            // Guardar monedas en SharedPreferences
+            prefs.edit().putInt("coins", coins).apply();
             generateFood();
             // No remover cola para hacer crecer la serpiente
         } else {
@@ -190,7 +208,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void gameOver() {
-        // Reiniciar juego
+        // Reiniciar juego (las monedas acumuladas se conservan gracias a SharedPreferences)
         initGame();
     }
 
@@ -199,7 +217,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         canvas.drawColor(Color.BLACK);
 
         // CALCULO MODIFICADO para área de juego más grande
-        int availableWidth = getWidth() - 300; // Dejar 300px para controles + margen
+        int availableWidth  = getWidth() - 300; // Dejar 300px para controles + margen
         int availableHeight = getHeight() - 40; // Dejar margen superior e inferior
 
         // Calcular el tamaño máximo que quepa en el espacio disponible
@@ -208,39 +226,37 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Calcular BLOCK_SIZE dinámico basado en el espacio disponible
         int dynamicBlockSize = maxGridSize / Math.max(GRID_WIDTH, GRID_HEIGHT);
 
-        int gridWidthPx = GRID_WIDTH * dynamicBlockSize;
+        int gridWidthPx  = GRID_WIDTH  * dynamicBlockSize;
         int gridHeightPx = GRID_HEIGHT * dynamicBlockSize;
 
         // Centrar el área de juego
         int offsetX = (getWidth() - gridWidthPx - 300) / 2;
         int offsetY = (getHeight() - gridHeightPx) / 2;
 
-        // DIBUJAR IMAGEN DE FONDO con opacidad (solo dentro del área del juego)
+        // Dibujar imagen de fondo con opacidad dentro del área de juego
         try {
-            // Cargar la imagen de fondo
-            android.graphics.Bitmap backgroundBitmap = android.graphics.BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
-
+            android.graphics.Bitmap backgroundBitmap =
+                    BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
             if (backgroundBitmap != null) {
-                // Crear un paint con opacidad (alpha)
                 Paint backgroundPaint = new Paint();
-                backgroundPaint.setAlpha(100); // 100/255 = ~40% de opacidad
-
-                // Dibujar la imagen de fondo escalada al tamaño del área de juego
-                Rect destRect = new Rect(offsetX, offsetY, offsetX + gridWidthPx, offsetY + gridHeightPx);
+                backgroundPaint.setAlpha(100); // 40% de opacidad
+                Rect destRect = new Rect(
+                        offsetX, offsetY,
+                        offsetX + gridWidthPx,
+                        offsetY + gridHeightPx
+                );
                 canvas.drawBitmap(backgroundBitmap, null, destRect, backgroundPaint);
             }
         } catch (Exception e) {
-            // Si hay error cargando la imagen, solo dibujar fondo negro
             canvas.drawColor(Color.BLACK);
         }
 
-        // DIBUJAR BORDES BLANCOS como límites del juego
+        // Dibujar bordes blancos
         paint.setColor(Color.WHITE);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(4);
         paint.setAlpha(255);
 
-        // Dibujar rectángulo que marca los límites del juego
         Rect borderRect = new Rect(
                 offsetX,
                 offsetY,
@@ -249,12 +265,16 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
         canvas.drawRect(borderRect, paint);
 
-        // Volver al estilo FILL para los demás elementos
+        // Volver al estilo de relleno
         paint.setStyle(Paint.Style.FILL);
         paint.setAlpha(255);
 
-        // Dibujar comida (punto blanco) - DENTRO de los bordes
-        paint.setColor(Color.WHITE);
+        // Dibujar comida: dorada o roja según isGolden
+        if (isGolden) {
+            paint.setColor(Color.parseColor("#FFD700")); // dorada
+        } else {
+            paint.setColor(Color.RED); // roja
+        }
         Rect foodRect = new Rect(
                 offsetX + food.x * dynamicBlockSize,
                 offsetY + food.y * dynamicBlockSize,
@@ -263,15 +283,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
         canvas.drawRect(foodRect, paint);
 
-        // Dibujar serpiente - DENTRO de los bordes
+        // Dibujar serpiente
         for (int i = 0; i < snake.size(); i++) {
             Point segment = snake.get(i);
-
-            // Cabeza verde
+            // Cabeza
             if (i == 0) {
                 paint.setColor(Color.GREEN);
             } else {
-                // Cuerpo verde más oscuro
+                // Cuerpo
                 paint.setColor(Color.rgb(0, 150, 0));
             }
 
@@ -283,7 +302,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             );
             canvas.drawRect(segmentRect, paint);
 
-            // Bordes de los segmentos
+            // Dibujar el borde del segmento
             paint.setColor(Color.DKGRAY);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(2);
@@ -291,14 +310,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             paint.setStyle(Paint.Style.FILL);
         }
 
-        // Dibujar información
+        // Dibujar información (puntuación)
         drawGameInfo(canvas);
     }
+
     private void drawGameInfo(Canvas canvas) {
         paint.setColor(Color.WHITE);
         paint.setTextSize(36);
 
-        // Usar fuente monospace si la fuente personalizada falla
+        // Usar fuente personalizada o monospace de respaldo
         try {
             paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
         } catch (Exception e) {
@@ -310,7 +330,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         // Instrucciones
         paint.setTextSize(20);
-        canvas.drawText("Come los puntos blancos!", 50, 90, paint);
+        canvas.drawText("Come las manzanas!", 50, 90, paint);
     }
 
     // Métodos para controlar la dirección
