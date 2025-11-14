@@ -58,6 +58,10 @@
             android:name=".ScoresActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+        <activity
+            android:name=".StoreActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
 
     </application>
 
