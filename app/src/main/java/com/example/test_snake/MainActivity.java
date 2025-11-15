@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.database.DataSnapshot;
@@ -18,8 +19,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnStartGame, btnSettings, btnScores, btnExit;
     private Button btnEditUser, btnLogout;
-    private Button btnTienda;  // Botón de la tienda
-    private TextView tvUsername;
+    private Button btnTienda; // Botón de TIENDA
+    private TextView tvUsername; // Muestra: Hola, [usuario]
 
     private DatabaseReference databaseReference;
 
@@ -40,18 +41,18 @@ public class MainActivity extends AppCompatActivity {
         btnSettings  = findViewById(R.id.btnSettings);
         btnScores    = findViewById(R.id.btnScores);
         btnExit      = findViewById(R.id.btnExit);
-        btnTienda    = findViewById(R.id.btnTienda); // Inicializar botón de tienda
+        btnTienda    = findViewById(R.id.btnTienda); // IMPORTANTE: debe existir en activity_main.xml
 
-        // Cargar mensaje desde Firebase
+        // Cargar mensaje desde Firebase / SharedPreferences
         loadMessageFromFirebase();
 
-        // Configurar listeners para cada botón
+        // Asignar listeners a los botones
         setupButtonListeners();
     }
 
-    /** Lee el mensaje "Hola, [username]" desde Firebase o SharedPreferences y lo muestra. */
     private void loadMessageFromFirebase() {
         DatabaseReference messageRef = databaseReference.child("message");
+
         messageRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -61,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
                     if (message != null && !message.isEmpty()) {
                         username = message;
                     } else {
-                        // Si no hay mensaje en Firebase, usar SharedPreferences o intent
+                        // Si no hay mensaje en Firebase, usar SharedPreferences o Intent
                         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                         username = getIntent().getStringExtra("username");
                         if (username == null || username.isEmpty()) {
@@ -75,15 +76,16 @@ public class MainActivity extends AppCompatActivity {
                     if (username == null || username.isEmpty()) {
                         username = prefs.getString("username", "Invitado");
                     }
-                    // Guardar el valor por defecto en Firebase
+                    // Guardar en Firebase para futuras ejecuciones
                     messageRef.setValue(username);
                 }
+
                 tvUsername.setText("Hola, " + username);
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-                // En caso de error, usar SharedPreferences
+                // Si falla Firebase, usar SharedPreferences
                 SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                 String username = getIntent().getStringExtra("username");
                 if (username == null || username.isEmpty()) {
@@ -94,9 +96,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /** Asigna las acciones de cada botón del menú principal. */
     private void setupButtonListeners() {
-        // Iniciar el juego
+
+        // Iniciar juego
         btnStartGame.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -104,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Abrir la configuración
+        // Configuración
         btnSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -112,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Abrir puntuaciones
+        // Puntuaciones
         btnScores.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -120,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Salir de la app
+        // Salir
         btnExit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -139,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Cerrar sesión
+        // Logout
         btnLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -153,11 +155,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Abrir la tienda de skins
+        // TIENDA
         btnTienda.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, StoreActivity.class));
+                // Abrir la tienda de skins
+                Intent intent = new Intent(MainActivity.this, StoreActivity.class);
+                startActivity(intent);
             }
         });
     }
@@ -165,6 +169,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Puedes limpiar recursos adicionales aquí si es necesario
+        // Limpieza si hace falta
     }
 }

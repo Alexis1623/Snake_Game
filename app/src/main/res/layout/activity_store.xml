@@ -2,14 +2,15 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
-    android:background="#121212">
+    android:background="#121212"
+    android:padding="16dp">
 
+    <!-- Barra superior con monedas -->
     <TextView
         android:id="@+id/coinsTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Monedas:"
+        android:text="MONEDAS:"
         android:textColor="#FFD700"
         android:textSize="20sp"
         android:fontFamily="@font/vcr_osd_mono_1_001" />
@@ -25,6 +26,7 @@
         android:textSize="20sp"
         android:fontFamily="@font/vcr_osd_mono_1_001" />
 
+    <!-- RecyclerView para la lista de skins -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/skinsRecyclerView"
         android:layout_width="match_parent"

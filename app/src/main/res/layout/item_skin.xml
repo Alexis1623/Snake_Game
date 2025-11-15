@@ -47,5 +47,4 @@
         android:background="@drawable/button_retro_style"
         android:textColor="#00FF00"
         android:fontFamily="@font/vcr_osd_mono_1_001" />
-
 </LinearLayout>
