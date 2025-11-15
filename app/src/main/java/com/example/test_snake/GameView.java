@@ -42,10 +42,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private static final long UPDATE_INTERVAL = 200; // ms entre movimientos
 
     // Sistema de monedas
-    private int coins = 0;               // Cantidad de monedas acumuladas
-    private boolean isGolden = false;    // Marca si la manzana actual es dorada (vale 5 monedas)
-    private Random random = new Random();// Generador de números aleatorios
-    private SharedPreferences prefs;     // Preferencias para persistir las monedas
+    private int coins = 0;             // Cantidad de monedas acumuladas
+    private boolean isGolden = false;  // Marca si la manzana actual es dorada (vale 5 monedas)
+    private Random random = new Random();
+    private SharedPreferences prefs;   // Preferencias para persistir las monedas y la skin equipada
+    private String equippedSkin;       // Skin actualmente equipada (default, azul, roja)
 
     // Direcciones
     private enum Direction {
@@ -74,9 +75,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint = new Paint();
         setFocusable(true);
 
-        // Inicializar preferencias y cargar monedas guardadas
+        // Inicializar preferencias y cargar monedas y skin guardadas
         prefs = getContext().getSharedPreferences("SnakePrefs", Context.MODE_PRIVATE);
         coins = prefs.getInt("coins", 0);
+        equippedSkin = prefs.getString("equipped_skin", "skin_default");
 
         initGame();
     }
@@ -91,7 +93,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Generar primera comida
         generateFood();
 
-        score           = 0;
+        score            = 0;
         currentDirection = Direction.RIGHT;
         nextDirection    = Direction.RIGHT;
     }
@@ -283,15 +285,30 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
         canvas.drawRect(foodRect, paint);
 
-        // Dibujar serpiente
+        // Actualizar la skin equipada (por si cambió en la tienda)
+        equippedSkin = prefs.getString("equipped_skin", "skin_default");
+
+        // Dibujar serpiente con colores según la skin equipada
         for (int i = 0; i < snake.size(); i++) {
             Point segment = snake.get(i);
-            // Cabeza
             if (i == 0) {
-                paint.setColor(Color.GREEN);
+                // Cabeza
+                if ("skin_red".equals(equippedSkin)) {
+                    paint.setColor(Color.parseColor("#FF4444")); // Rojo claro
+                } else if ("skin_blue".equals(equippedSkin)) {
+                    paint.setColor(Color.parseColor("#448AFF")); // Azul claro
+                } else {
+                    paint.setColor(Color.GREEN); // Verde por defecto
+                }
             } else {
                 // Cuerpo
-                paint.setColor(Color.rgb(0, 150, 0));
+                if ("skin_red".equals(equippedSkin)) {
+                    paint.setColor(Color.parseColor("#B71C1C")); // Rojo oscuro
+                } else if ("skin_blue".equals(equippedSkin)) {
+                    paint.setColor(Color.parseColor("#0D47A1")); // Azul oscuro
+                } else {
+                    paint.setColor(Color.rgb(0, 150, 0)); // Verde oscuro
+                }
             }
 
             Rect segmentRect = new Rect(
@@ -302,7 +319,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             );
             canvas.drawRect(segmentRect, paint);
 
-            // Dibujar el borde del segmento
+            // Dibujar borde del segmento
             paint.setColor(Color.DKGRAY);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(2);
@@ -333,7 +350,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         canvas.drawText("Come las manzanas!", 50, 90, paint);
     }
 
-    // Métodos para controlar la dirección
+    // Métodos para controlar la dirección de la serpiente
     public void setDirectionUp() {
         if (currentDirection != Direction.DOWN) {
             nextDirection = Direction.UP;
