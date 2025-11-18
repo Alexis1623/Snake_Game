@@ -12,22 +12,9 @@
         android:layout_toLeftOf="@+id/controllerPanel" />
 
     <!-- Panel de puntuación estilo GameBoy -->
-    <TextView
-        android:id="@+id/scoreText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="15dp"
-        android:background="#80000000"
-        android:fontFamily="@font/vcr_osd_mono_1_001"
-        android:padding="3dp"
-        android:text="SCORE: 0"
-        android:textColor="#00FF00"
-        android:textSize="18sp"
-        android:textStyle="bold" />
 
     <!-- Panel de controles estilo GameBoy -->
+
     <LinearLayout
         android:id="@+id/controllerPanel"
         android:layout_width="wrap_content"
@@ -41,6 +28,19 @@
         android:padding="16dp">
 
         <!-- Imagen de la serpiente al lado de los controles -->
+        <TextView
+            android:id="@+id/scoreText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="19dp"
+            android:background="#80000000"
+            android:fontFamily="@font/vcr_osd_mono_1_001"
+            android:padding="3dp"
+            android:text="SCORE: 0"
+            android:textColor="#00FF00"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
         <ImageView
             android:layout_width="67dp"
             android:layout_height="48dp"

@@ -9,6 +9,7 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import java.util.ArrayList;
@@ -25,9 +26,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     // Variables del juego
     private int score = 0;
-    private static final int BLOCK_SIZE = 40;
-    private static final int GRID_WIDTH = 20;
-    private static final int GRID_HEIGHT = 15;
+    private static final int GRID_WIDTH = 40;
+    private static final int GRID_HEIGHT = 20;
 
     // Serpiente
     private List<Point> snake;
@@ -39,14 +39,22 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     // Tiempo
     private long lastUpdateTime = 0;
-    private static final long UPDATE_INTERVAL = 200; // ms entre movimientos
+    private static final long UPDATE_INTERVAL = 200;
 
     // Sistema de monedas
-    private int coins = 0;             // Cantidad de monedas acumuladas
-    private boolean isGolden = false;  // Marca si la manzana actual es dorada (vale 5 monedas)
+    private int coins = 0;
+    private boolean isGolden = false;
     private Random random = new Random();
-    private SharedPreferences prefs;   // Preferencias para persistir las monedas y la skin equipada
-    private String equippedSkin;       // Skin actualmente equipada (default, azul, roja)
+    private SharedPreferences prefs;
+    private String equippedSkin;
+
+    // Variables para escalado adaptable
+    private int dynamicBlockSize;
+    private int gameAreaWidth, gameAreaHeight;
+    private int gameAreaOffsetX, gameAreaOffsetY;
+
+    // Estado del juego
+    private boolean gameOver = false;
 
     // Direcciones
     private enum Direction {
@@ -75,7 +83,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint = new Paint();
         setFocusable(true);
 
-        // Inicializar preferencias y cargar monedas y skin guardadas
         prefs = getContext().getSharedPreferences("SnakePrefs", Context.MODE_PRIVATE);
         coins = prefs.getInt("coins", 0);
         equippedSkin = prefs.getString("equipped_skin", "skin_default");
@@ -84,18 +91,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void initGame() {
-        // Inicializar serpiente en el centro
         snake = new ArrayList<>();
         snake.add(new Point(GRID_WIDTH / 2, GRID_HEIGHT / 2));
         snake.add(new Point(GRID_WIDTH / 2 - 1, GRID_HEIGHT / 2));
         snake.add(new Point(GRID_WIDTH / 2 - 2, GRID_HEIGHT / 2));
 
-        // Generar primera comida
         generateFood();
 
-        score            = 0;
+        score = 0;
+        gameOver = false;
         currentDirection = Direction.RIGHT;
-        nextDirection    = Direction.RIGHT;
+        nextDirection = Direction.RIGHT;
     }
 
     private void generateFood() {
@@ -104,7 +110,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             int y = random.nextInt(GRID_HEIGHT);
             food = new Point(x, y);
 
-            // Verificar que la comida no esté en la serpiente
             boolean collision = false;
             for (Point segment : snake) {
                 if (segment.equals(food)) {
@@ -114,13 +119,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
             if (!collision) break;
         }
-        // Determinar si la fruta es dorada (20% de probabilidad)
         isGolden = random.nextFloat() < 0.2;
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        running    = true;
+        running = true;
         gameThread = new Thread(this);
         gameThread.start();
     }
@@ -136,7 +140,36 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {}
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        calculateGameArea();
+    }
+
+    private void calculateGameArea() {
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        float density = metrics.density;
+
+        int controlsAreaWidth = (int)(180 * density);
+        int margin = (int)(16 * density);
+
+        int availableWidth = getWidth() - controlsAreaWidth - (2 * margin);
+        int availableHeight = getHeight() - (2 * margin);
+
+        int maxBlockSizeByWidth = availableWidth / GRID_WIDTH;
+        int maxBlockSizeByHeight = availableHeight / GRID_HEIGHT;
+
+        dynamicBlockSize = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight);
+
+        // Asegurar que el blockSize sea al menos 1
+        if (dynamicBlockSize < 1) {
+            dynamicBlockSize = 1;
+        }
+
+        gameAreaWidth = GRID_WIDTH * dynamicBlockSize;
+        gameAreaHeight = GRID_HEIGHT * dynamicBlockSize;
+
+        gameAreaOffsetX = margin;
+        gameAreaOffsetY = (getHeight() - gameAreaHeight) / 2;
+    }
 
     @Override
     public void run() {
@@ -145,7 +178,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastUpdateTime > UPDATE_INTERVAL) {
-                updateGame();
+                if (!gameOver) {
+                    updateGame();
+                }
                 lastUpdateTime = currentTime;
             }
 
@@ -156,7 +191,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
 
             try {
-                Thread.sleep(12); // 60 FPS
+                Thread.sleep(16);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -164,10 +199,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void updateGame() {
-        // Actualizar dirección con la siguiente dirección pendiente
         currentDirection = nextDirection;
 
-        // Mover serpiente - obtener la cabeza actual y calcular nueva posición
         Point head = new Point(snake.get(0));
         switch (currentDirection) {
             case UP:    head.y--; break;
@@ -176,76 +209,55 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             case RIGHT: head.x++; break;
         }
 
-        // Verificar colisiones con bordes
+        // Verificar colisión con bordes - GAME OVER
         if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
-            gameOver();
+            gameOver = true;
             return;
         }
 
-        // Verificar colisión con sí misma
+        // Verificar colisión con sí misma - GAME OVER
         for (int i = 1; i < snake.size(); i++) {
             if (head.equals(snake.get(i))) {
-                gameOver();
+                gameOver = true;
                 return;
             }
         }
 
-        // Agregar nueva cabeza a la serpiente
         snake.add(0, head);
 
-        // Verificar si comió comida
         if (head.equals(food)) {
-            // Incrementar puntuación (mantiene compatibilidad con el juego original)
             score += 10;
-            // Actualizar monedas según el tipo de manzana
             coins += isGolden ? 5 : 1;
-            // Guardar monedas en SharedPreferences
             prefs.edit().putInt("coins", coins).apply();
             generateFood();
-            // No remover cola para hacer crecer la serpiente
+            // RECALCULAR ÁREA DE JUEGO CADA VEZ QUE SE COME
+            calculateGameArea();
         } else {
-            // Remover cola si no comió (mantener mismo tamaño)
             snake.remove(snake.size() - 1);
         }
     }
 
     private void gameOver() {
-        // Reiniciar juego (las monedas acumuladas se conservan gracias a SharedPreferences)
-        initGame();
+        gameOver = true;
     }
 
     private void drawGame(Canvas canvas) {
-        // Fondo negro completo
         canvas.drawColor(Color.BLACK);
 
-        // CALCULO MODIFICADO para área de juego más grande
-        int availableWidth  = getWidth() - 300; // Dejar 300px para controles + margen
-        int availableHeight = getHeight() - 40; // Dejar margen superior e inferior
+        if (dynamicBlockSize == 0) {
+            calculateGameArea();
+        }
 
-        // Calcular el tamaño máximo que quepa en el espacio disponible
-        int maxGridSize = Math.min(availableWidth, availableHeight);
-
-        // Calcular BLOCK_SIZE dinámico basado en el espacio disponible
-        int dynamicBlockSize = maxGridSize / Math.max(GRID_WIDTH, GRID_HEIGHT);
-
-        int gridWidthPx  = GRID_WIDTH  * dynamicBlockSize;
-        int gridHeightPx = GRID_HEIGHT * dynamicBlockSize;
-
-        // Centrar el área de juego
-        int offsetX = (getWidth() - gridWidthPx - 300) / 2;
-        int offsetY = (getHeight() - gridHeightPx) / 2;
-
-        // Dibujar imagen de fondo con opacidad dentro del área de juego
         try {
             android.graphics.Bitmap backgroundBitmap =
                     BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
             if (backgroundBitmap != null) {
                 Paint backgroundPaint = new Paint();
-                backgroundPaint.setAlpha(100); // 40% de opacidad
+                backgroundPaint.setAlpha(100);
                 Rect destRect = new Rect(
-                        offsetX, offsetY,
-                        offsetX + gridWidthPx,
-                        offsetY + gridHeightPx
+                        gameAreaOffsetX, gameAreaOffsetY,
+                        gameAreaOffsetX + gameAreaWidth,
+                        gameAreaOffsetY + gameAreaHeight
                 );
                 canvas.drawBitmap(backgroundBitmap, null, destRect, backgroundPaint);
             }
@@ -253,73 +265,65 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             canvas.drawColor(Color.BLACK);
         }
 
-        // Dibujar bordes blancos
         paint.setColor(Color.WHITE);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(4);
         paint.setAlpha(255);
 
         Rect borderRect = new Rect(
-                offsetX,
-                offsetY,
-                offsetX + gridWidthPx,
-                offsetY + gridHeightPx
+                gameAreaOffsetX,
+                gameAreaOffsetY,
+                gameAreaOffsetX + gameAreaWidth,
+                gameAreaOffsetY + gameAreaHeight
         );
         canvas.drawRect(borderRect, paint);
 
-        // Volver al estilo de relleno
         paint.setStyle(Paint.Style.FILL);
         paint.setAlpha(255);
 
-        // Dibujar comida: dorada o roja según isGolden
         if (isGolden) {
-            paint.setColor(Color.parseColor("#FFD700")); // dorada
+            paint.setColor(Color.parseColor("#FFD700"));
         } else {
-            paint.setColor(Color.RED); // roja
+            paint.setColor(Color.RED);
         }
         Rect foodRect = new Rect(
-                offsetX + food.x * dynamicBlockSize,
-                offsetY + food.y * dynamicBlockSize,
-                offsetX + (food.x + 1) * dynamicBlockSize,
-                offsetY + (food.y + 1) * dynamicBlockSize
+                gameAreaOffsetX + food.x * dynamicBlockSize,
+                gameAreaOffsetY + food.y * dynamicBlockSize,
+                gameAreaOffsetX + (food.x + 1) * dynamicBlockSize,
+                gameAreaOffsetY + (food.y + 1) * dynamicBlockSize
         );
         canvas.drawRect(foodRect, paint);
 
-        // Actualizar la skin equipada (por si cambió en la tienda)
         equippedSkin = prefs.getString("equipped_skin", "skin_default");
 
-        // Dibujar serpiente con colores según la skin equipada
         for (int i = 0; i < snake.size(); i++) {
             Point segment = snake.get(i);
             if (i == 0) {
-                // Cabeza
                 if ("skin_red".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#FF4444")); // Rojo claro
+                    paint.setColor(Color.parseColor("#FF4444"));
                 } else if ("skin_blue".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#448AFF")); // Azul claro
+                    paint.setColor(Color.parseColor("#448AFF"));
                 } else {
-                    paint.setColor(Color.GREEN); // Verde por defecto
+                    paint.setColor(Color.GREEN);
                 }
             } else {
-                // Cuerpo
                 if ("skin_red".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#B71C1C")); // Rojo oscuro
+                    paint.setColor(Color.parseColor("#B71C1C"));
                 } else if ("skin_blue".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#0D47A1")); // Azul oscuro
+                    paint.setColor(Color.parseColor("#0D47A1"));
                 } else {
-                    paint.setColor(Color.rgb(0, 150, 0)); // Verde oscuro
+                    paint.setColor(Color.rgb(0, 150, 0));
                 }
             }
 
             Rect segmentRect = new Rect(
-                    offsetX + segment.x * dynamicBlockSize,
-                    offsetY + segment.y * dynamicBlockSize,
-                    offsetX + (segment.x + 1) * dynamicBlockSize,
-                    offsetY + (segment.y + 1) * dynamicBlockSize
+                    gameAreaOffsetX + segment.x * dynamicBlockSize,
+                    gameAreaOffsetY + segment.y * dynamicBlockSize,
+                    gameAreaOffsetX + (segment.x + 1) * dynamicBlockSize,
+                    gameAreaOffsetY + (segment.y + 1) * dynamicBlockSize
             );
             canvas.drawRect(segmentRect, paint);
 
-            // Dibujar borde del segmento
             paint.setColor(Color.DKGRAY);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(2);
@@ -327,56 +331,86 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             paint.setStyle(Paint.Style.FILL);
         }
 
-        // Dibujar información (puntuación)
+        // DIBUJAR GAME OVER SI ES NECESARIO
+        if (gameOver) {
+            drawGameOver(canvas);
+        }
+
         drawGameInfo(canvas);
     }
 
-    private void drawGameInfo(Canvas canvas) {
-        paint.setColor(Color.WHITE);
-        paint.setTextSize(36);
+    private void drawGameOver(Canvas canvas) {
+        paint.setColor(Color.RED);
+        paint.setTextSize(60);
+        paint.setStyle(Paint.Style.FILL);
 
-        // Usar fuente personalizada o monospace de respaldo
         try {
             paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
         } catch (Exception e) {
             paint.setTypeface(Typeface.MONOSPACE);
         }
 
-        // Puntuación
+        String gameOverText = "GAME OVER";
+        float textWidth = paint.measureText(gameOverText);
+        canvas.drawText(gameOverText, (getWidth() - textWidth) / 2, getHeight() / 2, paint);
+
+        paint.setTextSize(30);
+        String restartText = "Toca para reiniciar";
+        float restartWidth = paint.measureText(restartText);
+        canvas.drawText(restartText, (getWidth() - restartWidth) / 2, getHeight() / 2 + 50, paint);
+    }
+
+    private void drawGameInfo(Canvas canvas) {
+        paint.setColor(Color.WHITE);
+        paint.setTextSize(36);
+
+        try {
+            paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
+        } catch (Exception e) {
+            paint.setTypeface(Typeface.MONOSPACE);
+        }
+
         canvas.drawText("PUNTUACIÓN: " + score, 50, 50, paint);
 
-        // Instrucciones
         paint.setTextSize(20);
         canvas.drawText("Come las manzanas!", 50, 90, paint);
     }
 
-    // Métodos para controlar la dirección de la serpiente
+    // Método para reiniciar el juego
+    public void restartGame() {
+        initGame();
+    }
+
     public void setDirectionUp() {
-        if (currentDirection != Direction.DOWN) {
+        if (currentDirection != Direction.DOWN && !gameOver) {
             nextDirection = Direction.UP;
         }
     }
 
     public void setDirectionDown() {
-        if (currentDirection != Direction.UP) {
+        if (currentDirection != Direction.UP && !gameOver) {
             nextDirection = Direction.DOWN;
         }
     }
 
     public void setDirectionLeft() {
-        if (currentDirection != Direction.RIGHT) {
+        if (currentDirection != Direction.RIGHT && !gameOver) {
             nextDirection = Direction.LEFT;
         }
     }
 
     public void setDirectionRight() {
-        if (currentDirection != Direction.LEFT) {
+        if (currentDirection != Direction.LEFT && !gameOver) {
             nextDirection = Direction.RIGHT;
         }
     }
 
     public int getScore() {
         return score;
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
     }
 
     public void stopGame() {
