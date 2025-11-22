@@ -27,11 +27,11 @@ public class LoginActivity extends AppCompatActivity {
         btnPlay = findViewById(R.id.btnPlay);
         btnGuest = findViewById(R.id.btnGuest);
 
-        // Cargar el último usuario guardado en el campo (si existe)
+        // Si ya habías escrito un nombre antes, lo mostramos para que no lo tengas que reescribir
         String savedUsername = prefs.getString("username", "");
         if (!TextUtils.isEmpty(savedUsername)) {
             etUsername.setText(savedUsername);
-            etUsername.setSelection(savedUsername.length()); // Cursor al final
+            etUsername.setSelection(savedUsername.length()); // Dejar el cursor al final, cómodo para editar
         }
 
         btnPlay.setOnClickListener(new View.OnClickListener() {
@@ -39,24 +39,26 @@ public class LoginActivity extends AppCompatActivity {
             public void onClick(View v) {
                 String username = etUsername.getText().toString().trim();
 
+                // Si no pones nombre, entras como Invitado
                 if (TextUtils.isEmpty(username)) {
                     username = "Invitado";
                 }
 
+                // Validación sencilla: máximo 20 caracteres
                 if (username.length() > 20) {
                     etUsername.setError("Máximo 20 caracteres");
                     Toast.makeText(LoginActivity.this, "El nombre no puede superar 20 caracteres", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                // Guardar el nombre de usuario en SharedPreferences
+                // Guardamos tu nombre para recordarlo la próxima vez
                 SharedPreferences.Editor editor = prefs.edit();
                 editor.putString("username", username);
                 editor.apply();
 
                 Toast.makeText(LoginActivity.this, "Bienvenido " + username, Toast.LENGTH_SHORT).show();
 
-                // Ir al menú principal
+                // Vamos al menú principal y le pasamos el nombre por si la pantalla lo necesita ahora mismo
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 intent.putExtra("username", username);
                 startActivity(intent);
@@ -67,10 +69,10 @@ public class LoginActivity extends AppCompatActivity {
         btnGuest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Jugar como Invitado y guardar como username temporal
+                // Si quieres jugar rápido sin nombre, entras como 'Invitado'
                 String guest = "Invitado";
 
-                // Guardar invitado en SharedPreferences para sincronización con Firebase si es necesario
+                // Guardamos 'Invitado' para mantener sincronía si usamos Firebase
                 SharedPreferences.Editor editor = prefs.edit();
                 editor.putString("username", guest);
                 editor.apply();

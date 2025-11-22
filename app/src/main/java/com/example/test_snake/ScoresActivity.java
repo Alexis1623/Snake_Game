@@ -38,11 +38,11 @@ public class ScoresActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_scores);
 
-        // Obtener username
+        // Tomamos el username guardado para poder mostrar tus puntuaciones locales
         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
         username = prefs.getString("username", "Invitado");
 
-        // Inicializar vistas
+        // Vistas
         tvTitle = findViewById(R.id.tvTitle);
         rvScores = findViewById(R.id.rvScores);
         btnGlobal = findViewById(R.id.btnGlobal);
@@ -50,20 +50,20 @@ public class ScoresActivity extends AppCompatActivity {
 
         rvScores.setLayoutManager(new LinearLayoutManager(this));
 
-        // Inicializar lista vacía
+        // Preparamos la lista y el adaptador vacíos
         scoresList = new ArrayList<>();
         adapter = new ScoresAdapter(scoresList);
         rvScores.setAdapter(adapter);
 
-        // Configurar botones
+        // Botones para cambiar entre Top global y tus puntajes
         setupButtons();
 
-        // Cargar scores globales por defecto
+        // Por defecto mostramos el TOP 10 global
         loadGlobalScores();
     }
 
     private void setupButtons() {
-        // Botón GLOBAL
+        // Botón GLOBAL: si no está activo, lo activamos
         btnGlobal.setOnClickListener(v -> {
             if (!showingGlobal) {
                 showingGlobal = true;
@@ -72,7 +72,7 @@ public class ScoresActivity extends AppCompatActivity {
             }
         });
 
-        // Botón LOCAL
+        // Botón LOCAL: tus puntuaciones personales
         btnLocal.setOnClickListener(v -> {
             if (showingGlobal) {
                 showingGlobal = false;
@@ -81,13 +81,13 @@ public class ScoresActivity extends AppCompatActivity {
             }
         });
 
-        // Estilo inicial
+        // Estilo inicial de botones
         updateButtonStyles();
     }
 
     private void updateButtonStyles() {
         if (showingGlobal) {
-            // GLOBAL activo
+            // GLOBAL activo (más visible)
             btnGlobal.setBackgroundColor(0xFF9D4EDD); // Morado brillante
             btnGlobal.setTextColor(0xFFFFFFFF); // Blanco
 
@@ -112,6 +112,7 @@ public class ScoresActivity extends AppCompatActivity {
         globalScoresRef = FirebaseDatabase.getInstance()
                 .getReference("global_scores");
 
+        // Escuchar cambios en el nodo global_scores y actualizar UI
         globalScoresRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -140,6 +141,7 @@ public class ScoresActivity extends AppCompatActivity {
                     return;
                 }
 
+                // Ordenar desc y quedar con los top 10 para mostrar
                 tempList.sort((s1, s2) -> Integer.compare(s2.getScore(), s1.getScore()));
 
                 for (int i = 0; i < Math.min(10, tempList.size()); i++) {
@@ -153,6 +155,7 @@ public class ScoresActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
+                // Si Firebase falla, mostramos un mensaje amigable y una sugerencia
                 handleFirebaseError(databaseError);
             }
         });
@@ -166,6 +169,7 @@ public class ScoresActivity extends AppCompatActivity {
                 .getReference("user_scores")
                 .child(username);
 
+        // Escuchamos el historial del usuario y lo mostramos ordenado
         userScoresRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -197,7 +201,7 @@ public class ScoresActivity extends AppCompatActivity {
                 // Ordenar por puntuación descendente
                 tempList.sort((s1, s2) -> Integer.compare(s2.getScore(), s1.getScore()));
 
-                // Mostrar todos los scores personales (sin límite de 10)
+                // Mostrar todos tus scores (sin límite de 10)
                 for (int i = 0; i < tempList.size(); i++) {
                     Score score = tempList.get(i);
                     score.setPosition(i + 1);
@@ -228,6 +232,7 @@ public class ScoresActivity extends AppCompatActivity {
             errorMsg = "Error de conexión. Verifica tu internet";
         }
 
+        // Mostrar un mensaje claro en la lista para que el usuario entienda qué pasó
         showErrorMessage(errorMsg);
     }
 

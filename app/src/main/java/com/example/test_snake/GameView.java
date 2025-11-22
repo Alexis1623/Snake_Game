@@ -18,6 +18,7 @@ import java.util.Random;
 import android.graphics.BitmapFactory;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import androidx.core.content.res.ResourcesCompat;
 
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
@@ -26,24 +27,24 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private SurfaceHolder holder;
     private Paint paint;
 
-    // Variables del juego
+    // Puntos actuales y constantes de la cuadricula
     private int score = 0;
     private static final int GRID_WIDTH = 40;
     private static final int GRID_HEIGHT = 20;
 
-    // Serpiente
+    // La serpiente: lista de segmentos (cada uno es un punto en la cuadrícula)
     private List<Point> snake;
     private Direction currentDirection = Direction.RIGHT;
     private Direction nextDirection    = Direction.RIGHT;
 
-    // Comida
+    // La comida (manzana) en la cuadrícula
     private Point food;
 
-    // Tiempo
+    // Control del tiempo entre frames
     private long lastUpdateTime = 0;
     private static final long UPDATE_INTERVAL = 200;
 
-    // Sistema de monedas
+    // Monedas y sistema relacionado
     private int coins = 0;
     private boolean isGolden = false;
     private Random random = new Random();
@@ -52,20 +53,20 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private DatabaseReference coinsRef;
     private String username;
 
-    // Variables para escalado adaptable
+    // Variables que ayudan a escalar el juego según pantalla
     private int dynamicBlockSize;
     private int gameAreaWidth, gameAreaHeight;
     private int gameAreaOffsetX, gameAreaOffsetY;
 
-    // Estado del juego
+    // Estado: ¿terminó la partida?
     private boolean gameOver = false;
 
-    // Direcciones
+    // Direcciones posibles (fácil y claro)
     private enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
 
-    // Constructores
+    // Constructores: aquí iniciamos lo básico
     public GameView(Context context) {
         super(context);
         init();
@@ -92,7 +93,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         equippedSkin = prefs.getString("equipped_skin", "skin_default");
         username = prefs.getString("username", "Invitado");
 
-        // Inicializar Firebase para monedas
+        // Inicializamos la referencia a Firebase para las monedas del usuario
         coinsRef = FirebaseDatabase.getInstance()
                 .getReference("user_coins")
                 .child(username);
@@ -100,6 +101,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         initGame();
     }
 
+    // Preparar una nueva partida: serpiente en el centro y una manzana
     private void initGame() {
         snake = new ArrayList<>();
         snake.add(new Point(GRID_WIDTH / 2, GRID_HEIGHT / 2));
@@ -114,6 +116,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         nextDirection = Direction.RIGHT;
     }
 
+    // Genera comida en un lugar donde no choque con la serpiente
     private void generateFood() {
         while (true) {
             int x = random.nextInt(GRID_WIDTH);
@@ -129,6 +132,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
             if (!collision) break;
         }
+        // Pequeña probabilidad de manzana dorada
         isGolden = random.nextFloat() < 0.2;
     }
 
@@ -154,6 +158,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         calculateGameArea();
     }
 
+    // Calcula el tamaño de cada bloque para que el juego se vea bien en cualquier pantalla
     private void calculateGameArea() {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density;
@@ -169,7 +174,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         dynamicBlockSize = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight);
 
-        // Asegurar que el blockSize sea al menos 1
+        // Asegurarnos que sea al menos 1
         if (dynamicBlockSize < 1) {
             dynamicBlockSize = 1;
         }
@@ -219,13 +224,13 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             case RIGHT: head.x++; break;
         }
 
-        // Verificar colisión con bordes - GAME OVER
+        // Si chocas contra los bordes, se acaba la partida
         if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
             gameOver = true;
             return;
         }
 
-        // Verificar colisión con sí misma - GAME OVER
+        // Si te muerdes a ti mismo, también se acaba
         for (int i = 1; i < snake.size(); i++) {
             if (head.equals(snake.get(i))) {
                 gameOver = true;
@@ -236,15 +241,16 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         snake.add(0, head);
 
         if (head.equals(food)) {
+            // Comer incrementa puntos y puede dar monedas
             score += 10;
             coins += isGolden ? 5 : 1;
             prefs.edit().putInt("coins", coins).apply();
 
-            // Sincronizar monedas con Firebase
+            // Intentamos sincronizar monedas con Firebase
             saveCoinsToFirebase();
 
             generateFood();
-            // RECALCULAR ÁREA DE JUEGO CADA VEZ QUE SE COME
+            // Reajustamos el área por si hace falta
             calculateGameArea();
         } else {
             snake.remove(snake.size() - 1);
@@ -257,6 +263,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
+    // Llamado desde GameActivity cuando cargamos monedas desde Firebase
     public void updateCoinsFromFirebase(int firebaseCoins) {
         this.coins = firebaseCoins;
     }
@@ -355,7 +362,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             paint.setStyle(Paint.Style.FILL);
         }
 
-        // DIBUJAR GAME OVER SI ES NECESARIO
+        // Si la partida terminó, dibujamos un mensaje claro para reiniciar
         if (gameOver) {
             drawGameOver(canvas);
         }
@@ -368,9 +375,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint.setTextSize(60);
         paint.setStyle(Paint.Style.FILL);
 
-        try {
-            paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
-        } catch (Exception e) {
+        // Usamos ResourcesCompat para obtener la fuente y mantener compatibilidad con API < 26
+        Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
+        if (tf != null) {
+            paint.setTypeface(tf);
+        } else {
             paint.setTypeface(Typeface.MONOSPACE);
         }
 
@@ -388,9 +397,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint.setColor(Color.WHITE);
         paint.setTextSize(36);
 
-        try {
-            paint.setTypeface(getResources().getFont(R.font.vcr_osd_mono_1_001));
-        } catch (Exception e) {
+        // Usamos ResourcesCompat aquí también
+        Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
+        if (tf != null) {
+            paint.setTypeface(tf);
+        } else {
             paint.setTypeface(Typeface.MONOSPACE);
         }
 

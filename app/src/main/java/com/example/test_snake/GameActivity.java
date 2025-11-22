@@ -28,7 +28,7 @@ public class GameActivity extends AppCompatActivity {
     private TextView scoreText;
     private Button btnUp, btnDown, btnLeft, btnRight;
 
-    // Firebase
+    // Firebase: referencias a nodos que usamos (puntuaciones y monedas)
     private DatabaseReference scoresRef;
     private DatabaseReference globalScoresRef;
     private DatabaseReference coinsRef;
@@ -40,11 +40,11 @@ public class GameActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
 
-        // Obtener username
+        // Tomamos el username guardado (si no hay, aparece 'Invitado')
         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
         username = prefs.getString("username", "Invitado");
 
-        // Inicializar Firebase
+        // Conectamos a Firebase para los diferentes nodos que necesitamos
         scoresRef = FirebaseDatabase.getInstance()
                 .getReference("user_scores")
                 .child(username);
@@ -54,7 +54,7 @@ public class GameActivity extends AppCompatActivity {
                 .getReference("user_coins")
                 .child(username);
 
-        // Cargar monedas desde Firebase
+        // Cargar las monedas desde Firebase (si hay)
         loadCoinsFromFirebase();
 
         // Inicializar vistas
@@ -65,15 +65,15 @@ public class GameActivity extends AppCompatActivity {
         btnLeft = findViewById(R.id.btnLeft);
         btnRight = findViewById(R.id.btnRight);
 
-        // Configurar controles
+        // Configurar los controles (flechas)
         setupControls();
 
-        // Configurar el touch listener para reiniciar
+        // Reinicia cuando tocas la pantalla si ya perdiste: antes guarda la puntuación
         gameView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (gameView.isGameOver() && event.getAction() == MotionEvent.ACTION_DOWN) {
-                    // Guardar score antes de reiniciar
+                    // Guardamos el score actual antes de reiniciar la partida
                     saveScoreToFirebase(gameView.getScore());
                     gameView.restartGame();
                     updateScore();
@@ -83,7 +83,7 @@ public class GameActivity extends AppCompatActivity {
             }
         });
 
-        // Iniciar actualización de puntuación
+        // Empezar el bucle que actualiza la puntuación en pantalla
         startScoreUpdate();
     }
 
@@ -94,11 +94,11 @@ public class GameActivity extends AppCompatActivity {
                 if (dataSnapshot.exists()) {
                     Integer firebaseCoins = dataSnapshot.getValue(Integer.class);
                     if (firebaseCoins != null) {
-                        // Sincronizar con SharedPreferences
+                        // Sincronizamos las monedas con las que guardamos localmente
                         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                         prefs.edit().putInt("coins", firebaseCoins).apply();
 
-                        // Actualizar en GameView
+                        // Avisamos al GameView por si necesita mostrarlas
                         if (gameView != null) {
                             gameView.updateCoinsFromFirebase(firebaseCoins);
                         }
@@ -108,7 +108,7 @@ public class GameActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
-                // Error al cargar monedas, usar las locales
+                // Si falla Firebase, seguimos con las monedas locales (no rompemos la partida)
             }
         });
     }
@@ -124,10 +124,10 @@ public class GameActivity extends AppCompatActivity {
         new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(100); // Actualizar cada 100ms
+                    Thread.sleep(100); // Actualiza cada 100ms
                     runOnUiThread(() -> {
                         updateScore();
-                        // Detectar game over y guardar score
+                        // Si terminó la partida, guardamos el score (una sola vez por cambio)
                         if (gameView.isGameOver() && gameView.getScore() > 0 && lastSavedScore != gameView.getScore()) {
                             saveScoreToFirebase(gameView.getScore());
                         }
@@ -151,7 +151,7 @@ public class GameActivity extends AppCompatActivity {
         lastSavedScore = score;
         final long timestamp = System.currentTimeMillis();
 
-        // Guardar en scores personales del usuario
+        // Guardar en el historial personal del usuario
         String scoreId = scoresRef.push().getKey();
         if (scoreId != null) {
             Map<String, Object> scoreData = new HashMap<>();
@@ -164,14 +164,14 @@ public class GameActivity extends AppCompatActivity {
                     .addOnFailureListener(e -> Log.e(TAG, "Error guardando score personal: " + e.getMessage()));
         }
 
-        // Verificar si es top score y guardar en global
+        // Verificar si entra al top 10 global y, si es así, guardarlo allí también
         checkAndSaveGlobalScore(score, timestamp);
     }
 
     private void checkAndSaveGlobalScore(final int score, final long timestamp) {
         Log.d(TAG, "Verificando si score " + score + " califica para top 10");
 
-        // Primero verificar cuántos scores hay en total
+        // Leemos los scores globales actuales para decidir si el nuevo entra al top 10
         globalScoresRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -179,7 +179,7 @@ public class GameActivity extends AppCompatActivity {
 
                 List<ScoreEntry> allScores = new ArrayList<>();
 
-                // Leer todos los scores actuales
+                // Recolectar todos los scores que hay
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     Long scoreValue = snapshot.child("score").getValue(Long.class);
                     if (scoreValue != null) {
@@ -188,29 +188,29 @@ public class GameActivity extends AppCompatActivity {
                     }
                 }
 
-                // Agregar el nuevo score
+                // Añadimos el score nuevo a la lista para comparar
                 allScores.add(new ScoreEntry(null, score));
 
-                // Ordenar de mayor a menor
+                // Ordenamos de mayor a menor
                 Collections.sort(allScores, (s1, s2) -> Integer.compare(s2.score, s1.score));
 
-                // Verificar si el nuevo score está en el top 10
+                // Determinar si el nuevo score queda en el top 10 y eliminar los que sobren
                 boolean isTop10 = false;
 
                 for (int i = 0; i < allScores.size(); i++) {
                     if (i < 10 && allScores.get(i).key == null) {
-                        // El nuevo score está en el top 10
+                        // Nuestro nuevo score está dentro del top 10
                         isTop10 = true;
                         Log.d(TAG, "Score " + score + " está en posición " + (i + 1) + " del top 10");
                     } else if (i >= 10 && allScores.get(i).key != null) {
-                        // Este score debe ser eliminado
+                        // Este score ya no pertenece al top 10, lo borramos
                         String keyToRemove = allScores.get(i).key;
                         Log.d(TAG, "Eliminando score fuera del top 10: " + allScores.get(i).score);
                         globalScoresRef.child(keyToRemove).removeValue();
                     }
                 }
 
-                // Si está en el top 10, guardarlo
+                // Si entra al top 10, lo guardamos con los datos necesarios
                 if (isTop10) {
                     String scoreId = globalScoresRef.push().getKey();
                     if (scoreId != null) {
@@ -245,7 +245,7 @@ public class GameActivity extends AppCompatActivity {
         });
     }
 
-    // Clase auxiliar para manejar scores con sus keys
+    // Pequeña clase auxiliar para manejar pares (key, score)
     private static class ScoreEntry {
         String key;
         int score;
@@ -268,7 +268,7 @@ public class GameActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (gameView != null && !gameView.isGameOver()) {
-            // El juego se reinicia automáticamente al tocar
+            // No hacemos nada especial aquí; el juego espera a la interacción
         }
     }
 }

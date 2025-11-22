@@ -23,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvUsername; // Muestra: Hola, [usuario]
 
     private DatabaseReference databaseReference;
+    private String currentUsername; // Guardar el username actual para control
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +44,15 @@ public class MainActivity extends AppCompatActivity {
         btnExit      = findViewById(R.id.btnExit);
         btnTienda    = findViewById(R.id.btnTienda); // IMPORTANTE: debe existir en activity_main.xml
 
+        // --- NUEVO: cargar username desde Intent o SharedPreferences y mostrarlo inmediatamente ---
+        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+        currentUsername = getIntent().getStringExtra("username");
+        if (currentUsername == null || currentUsername.isEmpty()) {
+            currentUsername = prefs.getString("username", "Invitado");
+        }
+        tvUsername.setText("Hola, " + currentUsername);
+        // --------------------------------------------------------------------------------------
+
         // Cargar mensaje desde Firebase / SharedPreferences
         loadMessageFromFirebase();
 
@@ -56,42 +66,40 @@ public class MainActivity extends AppCompatActivity {
         messageRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                String username;
                 if (dataSnapshot.exists()) {
                     String message = dataSnapshot.getValue(String.class);
                     if (message != null && !message.isEmpty()) {
-                        username = message;
-                    } else {
-                        // Si no hay mensaje en Firebase, usar SharedPreferences o Intent
-                        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
-                        username = getIntent().getStringExtra("username");
-                        if (username == null || username.isEmpty()) {
-                            username = prefs.getString("username", "Invitado");
+                        // Solo actualizar la UI con el valor de Firebase si el usuario actual es el por defecto
+                        // o si aún no hay un username válido.
+                        if (currentUsername == null || currentUsername.equals("Invitado") || currentUsername.isEmpty()) {
+                            currentUsername = message;
+                            tvUsername.setText("Hola, " + currentUsername);
                         }
+                        // Si el usuario ya se logueó (tiene un nombre distinto a 'Invitado'), no sobrescribimos.
+                    } else {
+                        // Si no hay mensaje en Firebase, ya tenemos currentUsername (mostrado arriba)
+                        // no hacemos nada adicional aquí.
                     }
                 } else {
-                    // Si no existe el nodo, usar SharedPreferences
-                    SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
-                    username = getIntent().getStringExtra("username");
-                    if (username == null || username.isEmpty()) {
-                        username = prefs.getString("username", "Invitado");
+                    // Si no existe el nodo, usar currentUsername (ya cargado) y guardar en Firebase para futuras ejecuciones
+                    if (currentUsername == null || currentUsername.isEmpty()) {
+                        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+                        currentUsername = prefs.getString("username", "Invitado");
+                        tvUsername.setText("Hola, " + currentUsername);
                     }
-                    // Guardar en Firebase para futuras ejecuciones
-                    messageRef.setValue(username);
+                    messageRef.setValue(currentUsername);
                 }
 
-                tvUsername.setText("Hola, " + username);
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-                // Si falla Firebase, usar SharedPreferences
-                SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
-                String username = getIntent().getStringExtra("username");
-                if (username == null || username.isEmpty()) {
-                    username = prefs.getString("username", "Invitado");
+                // Si falla Firebase, dejar el valor que ya mostramos (currentUsername)
+                if (currentUsername == null || currentUsername.isEmpty()) {
+                    SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+                    currentUsername = prefs.getString("username", "Invitado");
                 }
-                tvUsername.setText("Hola, " + username);
+                tvUsername.setText("Hola, " + currentUsername);
             }
         });
     }
