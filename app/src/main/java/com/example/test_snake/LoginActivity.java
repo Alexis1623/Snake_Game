@@ -67,8 +67,14 @@ public class LoginActivity extends AppCompatActivity {
         btnGuest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Jugar sin guardar el nombre (Invitado)
+                // Jugar como Invitado y guardar como username temporal
                 String guest = "Invitado";
+
+                // Guardar invitado en SharedPreferences para sincronización con Firebase si es necesario
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putString("username", guest);
+                editor.apply();
+
                 Toast.makeText(LoginActivity.this, "Entrando como Invitado", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 intent.putExtra("username", guest);

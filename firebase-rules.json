@@ -1,0 +1,42 @@
+{
+  "rules": {
+    "user_settings": {
+      "$username": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "message": {
+      ".read": true,
+      ".write": true
+    },
+    "scores": {
+      ".read": true,
+      ".write": true
+    },
+    "global_scores": {
+      ".read": true,
+      ".write": true,
+      "$scoreId": {
+        ".validate": "newData.hasChildren(['score', 'username', 'timestamp']) && newData.child('score').isNumber() && newData.child('username').isString() && newData.child('timestamp').isNumber()"
+      }
+    },
+    "user_scores": {
+      ".read": true,
+      "$username": {
+        ".write": true,
+        "$scoreId": {
+          ".validate": "newData.hasChildren(['score', 'username', 'timestamp'])"
+        }
+      }
+    },
+    "user_coins": {
+      ".read": true,
+      "$username": {
+        ".write": true,
+        ".validate": "newData.isNumber() && newData.val() >= 0"
+      }
+    }
+  }
+}
+

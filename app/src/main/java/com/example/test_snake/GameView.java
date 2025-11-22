@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import android.graphics.BitmapFactory;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
@@ -47,6 +49,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private Random random = new Random();
     private SharedPreferences prefs;
     private String equippedSkin;
+    private DatabaseReference coinsRef;
+    private String username;
 
     // Variables para escalado adaptable
     private int dynamicBlockSize;
@@ -86,6 +90,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         prefs = getContext().getSharedPreferences("SnakePrefs", Context.MODE_PRIVATE);
         coins = prefs.getInt("coins", 0);
         equippedSkin = prefs.getString("equipped_skin", "skin_default");
+        username = prefs.getString("username", "Invitado");
+
+        // Inicializar Firebase para monedas
+        coinsRef = FirebaseDatabase.getInstance()
+                .getReference("user_coins")
+                .child(username);
 
         initGame();
     }
@@ -229,12 +239,26 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             score += 10;
             coins += isGolden ? 5 : 1;
             prefs.edit().putInt("coins", coins).apply();
+
+            // Sincronizar monedas con Firebase
+            saveCoinsToFirebase();
+
             generateFood();
             // RECALCULAR ÁREA DE JUEGO CADA VEZ QUE SE COME
             calculateGameArea();
         } else {
             snake.remove(snake.size() - 1);
         }
+    }
+
+    private void saveCoinsToFirebase() {
+        if (coinsRef != null) {
+            coinsRef.setValue(coins);
+        }
+    }
+
+    public void updateCoinsFromFirebase(int firebaseCoins) {
+        this.coins = firebaseCoins;
     }
 
     private void gameOver() {
@@ -417,3 +441,4 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         running = false;
     }
 }
+

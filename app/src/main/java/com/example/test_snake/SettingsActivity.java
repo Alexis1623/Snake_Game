@@ -13,13 +13,23 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 
+// IMPORTS FIREBASE
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 public class SettingsActivity extends AppCompatActivity {
 
     private SharedPreferences prefs;
+    private DatabaseReference settingsRef; // referencia a Realtime DB
+    private String username; // nombre de usuario para la ruta
 
     // Audio
     private SeekBar seekBarMusic, seekBarSFX;
@@ -49,6 +59,15 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
 
         prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+
+        // obtener username guardado (si no existe, no conectamos a Firebase)
+        username = prefs.getString("username", "");
+        if (!username.isEmpty()) {
+            settingsRef = FirebaseDatabase.getInstance()
+                    .getReference("user_settings")
+                    .child(username);
+            loadFromFirebase();
+        }
 
         initializeViews();
         loadSettings();
@@ -89,6 +108,57 @@ public class SettingsActivity extends AppCompatActivity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_item, themes);
         adapter.setDropDownViewResource(R.layout.spinner_item);
         spinnerTheme.setAdapter(adapter);
+    }
+
+    // NUEVO: cargar desde Firebase (una sola vez al iniciar)
+    private void loadFromFirebase() {
+        if (settingsRef == null) return;
+
+        settingsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    SharedPreferences.Editor editor = prefs.edit();
+
+                    if (snapshot.child("music_volume").exists())
+                        editor.putInt("music_volume", snapshot.child("music_volume").getValue(Integer.class));
+                    if (snapshot.child("sfx_volume").exists())
+                        editor.putInt("sfx_volume", snapshot.child("sfx_volume").getValue(Integer.class));
+                    if (snapshot.child("difficulty").exists())
+                        editor.putString("difficulty", snapshot.child("difficulty").getValue(String.class));
+                    if (snapshot.child("game_speed").exists())
+                        editor.putInt("game_speed", snapshot.child("game_speed").getValue(Integer.class));
+                    if (snapshot.child("vibration").exists())
+                        editor.putBoolean("vibration", snapshot.child("vibration").getValue(Boolean.class));
+                    if (snapshot.child("theme_index").exists())
+                        editor.putInt("theme_index", snapshot.child("theme_index").getValue(Integer.class));
+                    if (snapshot.child("show_fps").exists())
+                        editor.putBoolean("show_fps", snapshot.child("show_fps").getValue(Boolean.class));
+                    if (snapshot.child("particles").exists())
+                        editor.putBoolean("particles", snapshot.child("particles").getValue(Boolean.class));
+                    if (snapshot.child("control_type").exists())
+                        editor.putString("control_type", snapshot.child("control_type").getValue(String.class));
+                    if (snapshot.child("sensitivity").exists())
+                        editor.putInt("sensitivity", snapshot.child("sensitivity").getValue(Integer.class));
+
+                    editor.apply();
+                    loadSettings(); // actualizar UI con lo obtenido
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(SettingsActivity.this,
+                        "Error al cargar configuración", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // NUEVO: guardar un par clave/valor en Firebase
+    private void saveToFirebase(String key, Object value) {
+        if (settingsRef != null) {
+            settingsRef.child(key).setValue(value);
+        }
     }
 
     private void loadSettings() {
@@ -160,6 +230,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 tvMusicVolume.setText(progress + "%");
                 prefs.edit().putInt("music_volume", progress).apply();
+                saveToFirebase("music_volume", progress); // guardar en Firebase
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -173,6 +244,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 tvSFXVolume.setText(progress + "%");
                 prefs.edit().putInt("sfx_volume", progress).apply();
+                saveToFirebase("sfx_volume", progress); // guardar en Firebase
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -188,6 +260,7 @@ public class SettingsActivity extends AppCompatActivity {
                 if (checkedId == R.id.rbEasy) difficulty = "easy";
                 else if (checkedId == R.id.rbHard) difficulty = "hard";
                 prefs.edit().putString("difficulty", difficulty).apply();
+                saveToFirebase("difficulty", difficulty);
                 Toast.makeText(SettingsActivity.this, "Dificultad: " + difficulty, Toast.LENGTH_SHORT).show();
             }
         });
@@ -198,6 +271,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 tvSpeedValue.setText(String.valueOf(progress));
                 prefs.edit().putInt("game_speed", progress).apply();
+                saveToFirebase("game_speed", progress);
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -208,6 +282,7 @@ public class SettingsActivity extends AppCompatActivity {
         // Vibración
         switchVibration.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("vibration", isChecked).apply();
+            saveToFirebase("vibration", isChecked);
         });
 
         // Tema
@@ -215,6 +290,7 @@ public class SettingsActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 prefs.edit().putInt("theme_index", position).apply();
+                saveToFirebase("theme_index", position);
                 String themeName = parent.getItemAtPosition(position).toString();
                 Toast.makeText(SettingsActivity.this, "Tema: " + themeName, Toast.LENGTH_SHORT).show();
             }
@@ -225,11 +301,13 @@ public class SettingsActivity extends AppCompatActivity {
         // FPS
         switchFPS.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("show_fps", isChecked).apply();
+            saveToFirebase("show_fps", isChecked);
         });
 
         // Partículas
         switchParticles.setOnCheckedChangeListener((buttonView, isChecked) -> {
             prefs.edit().putBoolean("particles", isChecked).apply();
+            saveToFirebase("particles", isChecked);
         });
 
         // Tipo de Control
@@ -240,6 +318,7 @@ public class SettingsActivity extends AppCompatActivity {
                 if (checkedId == R.id.rbButtons) controlType = "buttons";
                 else if (checkedId == R.id.rbTilt) controlType = "tilt";
                 prefs.edit().putString("control_type", controlType).apply();
+                saveToFirebase("control_type", controlType);
                 Toast.makeText(SettingsActivity.this, "Control: " + controlType, Toast.LENGTH_SHORT).show();
             }
         });
@@ -250,6 +329,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 tvSensitivityValue.setText(progress + "%");
                 prefs.edit().putInt("sensitivity", progress).apply();
+                saveToFirebase("sensitivity", progress);
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -278,6 +358,10 @@ public class SettingsActivity extends AppCompatActivity {
                     .setPositiveButton("Borrar", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            // Borrar de Firebase si existe
+                            if (settingsRef != null) {
+                                settingsRef.removeValue();
+                            }
                             prefs.edit().clear().apply();
                             Toast.makeText(SettingsActivity.this, "Todos los datos borrados", Toast.LENGTH_SHORT).show();
                             Intent intent = new Intent(SettingsActivity.this, LoginActivity.class);
@@ -348,6 +432,20 @@ public class SettingsActivity extends AppCompatActivity {
         editor.putString("control_type", "swipe");
         editor.putInt("sensitivity", 50);
         editor.apply();
+
+        // Guardar defaults en Firebase (si corresponde)
+        if (settingsRef != null) {
+            saveToFirebase("music_volume", 70);
+            saveToFirebase("sfx_volume", 85);
+            saveToFirebase("difficulty", "normal");
+            saveToFirebase("game_speed", 5);
+            saveToFirebase("vibration", true);
+            saveToFirebase("theme_index", 0);
+            saveToFirebase("show_fps", false);
+            saveToFirebase("particles", true);
+            saveToFirebase("control_type", "swipe");
+            saveToFirebase("sensitivity", 50);
+        }
 
         // Recargar la configuración en la UI
         loadSettings();

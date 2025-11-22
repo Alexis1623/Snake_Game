@@ -15,6 +15,10 @@ public class Score {
         return rank;
     }
 
+    public void setPosition(int position) {
+        this.rank = position;
+    }
+
     public String getName() {
         return name;
     }

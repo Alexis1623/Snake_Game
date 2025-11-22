@@ -13,6 +13,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.database.DatabaseReference;
+
 import java.util.List;
 
 public class SkinAdapter extends RecyclerView.Adapter<SkinAdapter.SkinViewHolder> {
@@ -20,11 +22,13 @@ public class SkinAdapter extends RecyclerView.Adapter<SkinAdapter.SkinViewHolder
     private final Context context;
     private final List<Skin> skins;
     private final SharedPreferences prefs;
+    private final DatabaseReference coinsRef;
 
-    public SkinAdapter(Context context, List<Skin> skins) {
+    public SkinAdapter(Context context, List<Skin> skins, DatabaseReference coinsRef) {
         this.context = context;
         this.skins = skins;
         this.prefs = context.getSharedPreferences("SnakePrefs", Context.MODE_PRIVATE);
+        this.coinsRef = coinsRef;
     }
 
     @NonNull
@@ -64,11 +68,19 @@ public class SkinAdapter extends RecyclerView.Adapter<SkinAdapter.SkinViewHolder
             // Si no está comprada y no es la default -> comprar
             if (!skin.isPurchased() && !skin.getId().equals("skin_default")) {
                 if (coins >= skin.getPrice()) {
+                    int newCoins = coins - skin.getPrice();
+
                     // Descontar monedas y marcar como comprada
                     prefs.edit()
-                            .putInt("coins", coins - skin.getPrice())
+                            .putInt("coins", newCoins)
                             .putBoolean("skin_purchased_" + skin.getId(), true)
                             .apply();
+
+                    // Sincronizar con Firebase
+                    if (coinsRef != null) {
+                        coinsRef.setValue(newCoins);
+                    }
+
                     skin.setPurchased(true);
                     notifyItemChanged(position);
                     Toast.makeText(context,
