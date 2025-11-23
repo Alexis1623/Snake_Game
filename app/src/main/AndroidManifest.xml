@@ -62,7 +62,7 @@
             android:name=".StoreActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
-
+        <service android:name=".MusicService" />
 
     </application>
 

@@ -3,6 +3,7 @@ package com.example.test_snake;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -19,11 +20,12 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnStartGame, btnSettings, btnScores, btnExit;
     private Button btnEditUser, btnLogout;
-    private Button btnTienda; // Botón de TIENDA
-    private TextView tvUsername; // Muestra: Hola, [usuario]
+    private Button btnTienda;
+    private TextView tvUsername;
 
     private DatabaseReference databaseReference;
-    private String currentUsername; // Guardar el username actual para control
+    private String currentUsername;
+    private static final String TAG = "MainActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,30 +36,61 @@ public class MainActivity extends AppCompatActivity {
         databaseReference = FirebaseDatabase.getInstance().getReference();
 
         // Inicializar vistas
-        tvUsername   = findViewById(R.id.tvUsername);
-        btnEditUser  = findViewById(R.id.btnEditUser);
-        btnLogout    = findViewById(R.id.btnLogout);
+        initializeViews();
 
+        // Cargar y mostrar username
+        loadUsername();
+
+        // Iniciar servicio de música
+        startMusicService();
+
+        // Cargar mensaje desde Firebase
+        loadMessageFromFirebase();
+
+        // Configurar listeners de botones
+        setupButtonListeners();
+
+        Log.d(TAG, "MainActivity creado - Servicio de música iniciado");
+    }
+
+    private void initializeViews() {
+        tvUsername = findViewById(R.id.tvUsername);
+        btnEditUser = findViewById(R.id.btnEditUser);
+        btnLogout = findViewById(R.id.btnLogout);
         btnStartGame = findViewById(R.id.btnStartGame);
-        btnSettings  = findViewById(R.id.btnSettings);
-        btnScores    = findViewById(R.id.btnScores);
-        btnExit      = findViewById(R.id.btnExit);
-        btnTienda    = findViewById(R.id.btnTienda); // IMPORTANTE: debe existir en activity_main.xml
+        btnSettings = findViewById(R.id.btnSettings);
+        btnScores = findViewById(R.id.btnScores);
+        btnExit = findViewById(R.id.btnExit);
+        btnTienda = findViewById(R.id.btnTienda);
+    }
 
-        // --- NUEVO: cargar username desde Intent o SharedPreferences y mostrarlo inmediatamente ---
+    private void loadUsername() {
         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
         currentUsername = getIntent().getStringExtra("username");
         if (currentUsername == null || currentUsername.isEmpty()) {
             currentUsername = prefs.getString("username", "Invitado");
         }
         tvUsername.setText("Hola, " + currentUsername);
-        // --------------------------------------------------------------------------------------
+    }
 
-        // Cargar mensaje desde Firebase / SharedPreferences
-        loadMessageFromFirebase();
+    private void startMusicService() {
+        try {
+            Intent musicIntent = new Intent(this, MusicService.class);
+            startService(musicIntent);
+            Log.d(TAG, "Servicio de música iniciado");
+        } catch (Exception e) {
+            Log.e(TAG, "Error al iniciar servicio de música: " + e.getMessage());
+        }
+    }
 
-        // Asignar listeners a los botones
-        setupButtonListeners();
+    private void stopMusicService() {
+        try {
+            Intent musicIntent = new Intent(this, MusicService.class);
+            stopService(musicIntent);
+            Log.d(TAG, "Servicio de música detenido");
+        } catch (Exception e) {
+            Log.e(TAG, "Error al detener servicio de música: " + e.getMessage());
+        }
     }
 
     private void loadMessageFromFirebase() {
@@ -69,19 +102,13 @@ public class MainActivity extends AppCompatActivity {
                 if (dataSnapshot.exists()) {
                     String message = dataSnapshot.getValue(String.class);
                     if (message != null && !message.isEmpty()) {
-                        // Solo actualizar la UI con el valor de Firebase si el usuario actual es el por defecto
-                        // o si aún no hay un username válido.
                         if (currentUsername == null || currentUsername.equals("Invitado") || currentUsername.isEmpty()) {
                             currentUsername = message;
                             tvUsername.setText("Hola, " + currentUsername);
+                            saveUsernameToPrefs(currentUsername);
                         }
-                        // Si el usuario ya se logueó (tiene un nombre distinto a 'Invitado'), no sobrescribimos.
-                    } else {
-                        // Si no hay mensaje en Firebase, ya tenemos currentUsername (mostrado arriba)
-                        // no hacemos nada adicional aquí.
                     }
                 } else {
-                    // Si no existe el nodo, usar currentUsername (ya cargado) y guardar en Firebase para futuras ejecuciones
                     if (currentUsername == null || currentUsername.isEmpty()) {
                         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                         currentUsername = prefs.getString("username", "Invitado");
@@ -89,12 +116,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                     messageRef.setValue(currentUsername);
                 }
-
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-                // Si falla Firebase, dejar el valor que ya mostramos (currentUsername)
+                Log.e(TAG, "Error Firebase: " + databaseError.getMessage());
                 if (currentUsername == null || currentUsername.isEmpty()) {
                     SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                     currentUsername = prefs.getString("username", "Invitado");
@@ -104,79 +130,78 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void setupButtonListeners() {
+    private void saveUsernameToPrefs(String username) {
+        SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+        prefs.edit().putString("username", username).apply();
+    }
 
+    private void setupButtonListeners() {
         // Iniciar juego
-        btnStartGame.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, GameActivity.class));
-            }
+        btnStartGame.setOnClickListener(v -> {
+            Log.d(TAG, "Iniciando juego");
+            startActivity(new Intent(MainActivity.this, GameActivity.class));
         });
 
         // Configuración
-        btnSettings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
-            }
+        btnSettings.setOnClickListener(v -> {
+            Log.d(TAG, "Abriendo configuración");
+            startActivity(new Intent(MainActivity.this, SettingsActivity.class));
         });
 
         // Puntuaciones
-        btnScores.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, ScoresActivity.class));
-            }
+        btnScores.setOnClickListener(v -> {
+            Log.d(TAG, "Abriendo puntuaciones");
+            startActivity(new Intent(MainActivity.this, ScoresActivity.class));
         });
 
-        // Salir
-        btnExit.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
+        // Salir - CORREGIDO: Detener música al salir
+        btnExit.setOnClickListener(v -> {
+            Log.d(TAG, "Saliendo de la aplicación");
+            stopMusicService();
+            finishAffinity(); // Cierra todas las actividades
         });
 
         // Editar usuario
-        btnEditUser.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                intent.putExtra("force_edit", true);
-                startActivity(intent);
-                finish();
-            }
+        btnEditUser.setOnClickListener(v -> {
+            Log.d(TAG, "Editando usuario");
+            stopMusicService(); // Detener música antes de cambiar
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            intent.putExtra("force_edit", true);
+            startActivity(intent);
+            finish();
         });
 
         // Logout
-        btnLogout.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
-                prefs.edit().remove("username").apply();
+        btnLogout.setOnClickListener(v -> {
+            Log.d(TAG, "Cerrando sesión");
+            SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+            prefs.edit().remove("username").apply();
+            stopMusicService(); // Detener música al hacer logout
 
-                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                finish();
-            }
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            finish();
         });
 
         // TIENDA
-        btnTienda.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Abrir la tienda de skins
-                Intent intent = new Intent(MainActivity.this, StoreActivity.class);
-                startActivity(intent);
-            }
+        btnTienda.setOnClickListener(v -> {
+            Log.d(TAG, "Abriendo tienda");
+            Intent intent = new Intent(MainActivity.this, StoreActivity.class);
+            startActivity(intent);
         });
+    }
+
+    @Override
+    public void onBackPressed() {
+        Log.d(TAG, "Botón back presionado - Cerrando aplicación");
+        stopMusicService();
+        finishAffinity(); // Cierra toda la aplicación
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Limpieza si hace falta
+        Log.d(TAG, "MainActivity destruido");
     }
 }

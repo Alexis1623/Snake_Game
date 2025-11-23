@@ -467,7 +467,15 @@
             android:background="@drawable/button_retro_style"
             android:fontFamily="@font/vcr_osd_mono_1_001"
             android:layout_marginBottom="24dp" />
-
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="← Volver al Menú"
+            android:textColor="#00FF00"
+            android:background="@drawable/button_retro_style"
+            android:fontFamily="@font/vcr_osd_mono_1_001"
+            android:layout_marginTop="16dp" />
     </LinearLayout>
 
 </ScrollView>
