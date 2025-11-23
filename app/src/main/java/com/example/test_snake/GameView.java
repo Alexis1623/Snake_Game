@@ -61,6 +61,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     // Estado: ¿terminó la partida?
     private boolean gameOver = false;
 
+    // Sistema de fondos y transición
+    private int currentBackground = R.mipmap.fondolvl1;
+    private int targetBackground = R.mipmap.fondo_marte;
+    private boolean backgroundChanged = false;
+    private boolean transitionInProgress = false;
+    private float transitionProgress = 0f;
+    private static final float TRANSITION_DURATION = 1.5f; // 1.5 segundos
+    private long transitionStartTime = 0;
+
     // Direcciones posibles (fácil y claro)
     private enum Direction {
         UP, DOWN, LEFT, RIGHT
@@ -114,6 +123,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         gameOver = false;
         currentDirection = Direction.RIGHT;
         nextDirection = Direction.RIGHT;
+
+        // Resetear el fondo al iniciar nueva partida
+        currentBackground = R.mipmap.fondolvl1;
+        backgroundChanged = false;
+        transitionInProgress = false;
+        transitionProgress = 0f;
     }
 
     // Genera comida en un lugar donde no choque con la serpiente
@@ -224,6 +239,16 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             case RIGHT: head.x++; break;
         }
 
+        // Detectar cambio de fondo al alcanzar 100 puntos
+        if (!backgroundChanged && !transitionInProgress && score >= 100) {
+            startBackgroundTransition();
+        }
+
+        // Actualizar transición si está en progreso
+        if (transitionInProgress) {
+            updateTransition();
+        }
+
         // Si chocas contra los bordes, se acaba la partida
         if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
             gameOver = true;
@@ -257,6 +282,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
+    private void startBackgroundTransition() {
+        transitionInProgress = true;
+        transitionStartTime = System.currentTimeMillis();
+        transitionProgress = 0f;
+    }
+
+    private void updateTransition() {
+        long currentTime = System.currentTimeMillis();
+        float elapsed = (currentTime - transitionStartTime) / 1000f;
+
+        transitionProgress = elapsed / TRANSITION_DURATION;
+
+        if (transitionProgress >= 1f) {
+            transitionInProgress = false;
+            backgroundChanged = true;
+            currentBackground = targetBackground;
+        }
+    }
+
     private void saveCoinsToFirebase() {
         if (coinsRef != null) {
             coinsRef.setValue(coins);
@@ -279,22 +323,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             calculateGameArea();
         }
 
-        try {
-            android.graphics.Bitmap backgroundBitmap =
-                    BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
-            if (backgroundBitmap != null) {
-                Paint backgroundPaint = new Paint();
-                backgroundPaint.setAlpha(100);
-                Rect destRect = new Rect(
-                        gameAreaOffsetX, gameAreaOffsetY,
-                        gameAreaOffsetX + gameAreaWidth,
-                        gameAreaOffsetY + gameAreaHeight
-                );
-                canvas.drawBitmap(backgroundBitmap, null, destRect, backgroundPaint);
-            }
-        } catch (Exception e) {
-            canvas.drawColor(Color.BLACK);
-        }
+        // Dibujar fondos con transición
+        drawBackgroundWithTransition(canvas);
 
         paint.setColor(Color.WHITE);
         paint.setStyle(Paint.Style.STROKE);
@@ -368,6 +398,53 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
 
         drawGameInfo(canvas);
+    }
+
+    private void drawBackgroundWithTransition(Canvas canvas) {
+        Rect destRect = new Rect(
+                gameAreaOffsetX, gameAreaOffsetY,
+                gameAreaOffsetX + gameAreaWidth,
+                gameAreaOffsetY + gameAreaHeight
+        );
+
+        if (transitionInProgress) {
+            // Durante la transición: dibujar ambos fondos con desplazamiento
+            int offset = (int) (gameAreaHeight * transitionProgress);
+
+            // Fondo actual (Tierra) desplazándose hacia arriba
+            android.graphics.Bitmap currentBg = BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
+            if (currentBg != null) {
+                Rect currentRect = new Rect(
+                        gameAreaOffsetX,
+                        gameAreaOffsetY - offset,
+                        gameAreaOffsetX + gameAreaWidth,
+                        gameAreaOffsetY + gameAreaHeight - offset
+                );
+                canvas.drawBitmap(currentBg, null, currentRect, paint);
+            }
+
+            // Nuevo fondo (Marte) entrando desde abajo
+            android.graphics.Bitmap targetBg = BitmapFactory.decodeResource(getResources(), R.mipmap.fondo_marte);
+            if (targetBg != null) {
+                Rect targetRect = new Rect(
+                        gameAreaOffsetX,
+                        gameAreaOffsetY + (gameAreaHeight - offset),
+                        gameAreaOffsetX + gameAreaWidth,
+                        gameAreaOffsetY + gameAreaHeight + (gameAreaHeight - offset)
+                );
+                canvas.drawBitmap(targetBg, null, targetRect, paint);
+            }
+        } else {
+            // Fuera de transición: dibujar solo el fondo actual
+            android.graphics.Bitmap backgroundBitmap = BitmapFactory.decodeResource(getResources(), currentBackground);
+            if (backgroundBitmap != null) {
+                Paint backgroundPaint = new Paint();
+                backgroundPaint.setAlpha(100);
+                canvas.drawBitmap(backgroundBitmap, null, destRect, backgroundPaint);
+            } else {
+                canvas.drawColor(Color.BLACK);
+            }
+        }
     }
 
     private void drawGameOver(Canvas canvas) {
@@ -452,4 +529,3 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         running = false;
     }
 }
-
