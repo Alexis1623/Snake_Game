@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.media.MediaPlayer;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.view.SurfaceHolder;
@@ -69,6 +70,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private float transitionProgress = 0f;
     private static final float TRANSITION_DURATION = 1.5f; // 1.5 segundos
     private long transitionStartTime = 0;
+    private boolean soundPlayed = false; // Control para reproducir sonido una vez
+
+    // MediaPlayer para el sonido de transición
+    private MediaPlayer transitionSound;
 
     // Direcciones posibles (fácil y claro)
     private enum Direction {
@@ -107,7 +112,21 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 .getReference("user_coins")
                 .child(username);
 
+        // Inicializar el MediaPlayer para el sonido de transición
+        initTransitionSound();
+
         initGame();
+    }
+
+    private void initTransitionSound() {
+        try {
+            transitionSound = MediaPlayer.create(getContext(), R.raw.lvlup);
+            if (transitionSound != null) {
+                transitionSound.setVolume(0.7f, 0.7f);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // Preparar una nueva partida: serpiente en el centro y una manzana
@@ -129,6 +148,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         backgroundChanged = false;
         transitionInProgress = false;
         transitionProgress = 0f;
+        soundPlayed = false;
     }
 
     // Genera comida en un lugar donde no choque con la serpiente
@@ -165,6 +185,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             gameThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+
+        // Liberar el MediaPlayer cuando se destruye la superficie
+        if (transitionSound != null) {
+            transitionSound.release();
+            transitionSound = null;
         }
     }
 
@@ -240,7 +266,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
 
         // Detectar cambio de fondo al alcanzar 100 puntos
-        if (!backgroundChanged && !transitionInProgress && score >= 100) {
+        if (!backgroundChanged && !transitionInProgress && score >= 50) {
             startBackgroundTransition();
         }
 
@@ -249,7 +275,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             updateTransition();
         }
 
-        // Si chocas contra los bordes, se acaba la partida
+        // Si choca contra los bordes, se acaba la partida
         if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
             gameOver = true;
             return;
@@ -286,6 +312,22 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         transitionInProgress = true;
         transitionStartTime = System.currentTimeMillis();
         transitionProgress = 0f;
+
+        // Reproducir sonido de transición
+        playTransitionSound();
+    }
+
+    private void playTransitionSound() {
+        if (transitionSound != null && !soundPlayed) {
+            try {
+                // Reiniciar si ya estaba reproduciéndose
+                transitionSound.seekTo(0);
+                transitionSound.start();
+                soundPlayed = true;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void updateTransition() {
@@ -473,9 +515,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private void drawGameInfo(Canvas canvas) {
         paint.setColor(Color.WHITE);
         paint.setTextSize(36);
-
-        // Usamos ResourcesCompat aquí también
-        Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
+    Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
         if (tf != null) {
             paint.setTypeface(tf);
         } else {
@@ -527,5 +567,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     public void stopGame() {
         running = false;
+
+        // Liberar el MediaPlayer cuando se detiene el juego
+        if (transitionSound != null) {
+            transitionSound.release();
+            transitionSound = null;
+        }
     }
 }
