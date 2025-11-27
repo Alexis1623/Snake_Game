@@ -24,6 +24,8 @@
             android:fontFamily="@font/vcr_osd_mono_1_001"
             android:layout_marginBottom="24dp" />
 
+        <!-- ================= AUDIO ================= -->
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -106,6 +108,8 @@
                 android:gravity="end"
                 android:fontFamily="@font/vcr_osd_mono_1_001" />
         </LinearLayout>
+
+        <!-- ================= JUEGO ================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -229,6 +233,7 @@
                 android:thumbTint="#00FF00"
                 android:trackTint="#AAAAAA" />
         </LinearLayout>
+        
 
         <TextView
             android:layout_width="match_parent"
@@ -307,6 +312,35 @@
                 android:thumbTint="#00FF00"
                 android:trackTint="#AAAAAA" />
         </LinearLayout>
+
+        <!-- 🔆 NUEVO: MODO NOCHE / DÍA -->
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Modo noche"
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="@font/vcr_osd_mono_1_001" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchNightMode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:thumbTint="#00FF00"
+                android:trackTint="#AAAAAA" />
+        </LinearLayout>
+
+        <!-- ================= CONTROLES ================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -403,6 +437,8 @@
                 android:fontFamily="@font/vcr_osd_mono_1_001" />
         </LinearLayout>
 
+        <!-- ================= CUENTA ================= -->
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -434,6 +470,8 @@
             android:textColor="#FF0000"
             android:background="@drawable/button_retro_style"
             android:fontFamily="@font/vcr_osd_mono_1_001" />
+
+        <!-- ================= INFORMACIÓN ================= -->
 
         <TextView
             android:layout_width="match_parent"
@@ -467,6 +505,7 @@
             android:background="@drawable/button_retro_style"
             android:fontFamily="@font/vcr_osd_mono_1_001"
             android:layout_marginBottom="24dp" />
+
         <Button
             android:id="@+id/btnBack"
             android:layout_width="match_parent"
@@ -479,4 +518,3 @@
     </LinearLayout>
 
 </ScrollView>
-
