@@ -54,6 +54,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private DatabaseReference coinsRef;
     private String username;
 
+    // Modo noche
+    private boolean nightMode = true; // por defecto
+
     // Variables que ayudan a escalar el juego según pantalla
     private int dynamicBlockSize;
     private int gameAreaWidth, gameAreaHeight;
@@ -70,17 +73,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private float transitionProgress = 0f;
     private static final float TRANSITION_DURATION = 1.5f; // 1.5 segundos
     private long transitionStartTime = 0;
-    private boolean soundPlayed = false; // Control para reproducir sonido una vez
+    private boolean soundPlayed = false;
 
     // MediaPlayer para el sonido de transición
     private MediaPlayer transitionSound;
 
-    // Direcciones posibles (fácil y claro)
     private enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
 
-    // Constructores: aquí iniciamos lo básico
     public GameView(Context context) {
         super(context);
         init();
@@ -106,6 +107,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         coins = prefs.getInt("coins", 0);
         equippedSkin = prefs.getString("equipped_skin", "skin_default");
         username = prefs.getString("username", "Invitado");
+        // Leer night_mode (true = modo noche, false = modo día)
+        nightMode = prefs.getBoolean("night_mode", true);
 
         // Inicializamos la referencia a Firebase para las monedas del usuario
         coinsRef = FirebaseDatabase.getInstance()
@@ -129,7 +132,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
-    // Preparar una nueva partida: serpiente en el centro y una manzana
     private void initGame() {
         snake = new ArrayList<>();
         snake.add(new Point(GRID_WIDTH / 2, GRID_HEIGHT / 2));
@@ -143,7 +145,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         currentDirection = Direction.RIGHT;
         nextDirection = Direction.RIGHT;
 
-        // Resetear el fondo al iniciar nueva partida
         currentBackground = R.mipmap.fondolvl1;
         backgroundChanged = false;
         transitionInProgress = false;
@@ -151,7 +152,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         soundPlayed = false;
     }
 
-    // Genera comida en un lugar donde no choque con la serpiente
     private void generateFood() {
         while (true) {
             int x = random.nextInt(GRID_WIDTH);
@@ -167,7 +167,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
             if (!collision) break;
         }
-        // Pequeña probabilidad de manzana dorada
         isGolden = random.nextFloat() < 0.2;
     }
 
@@ -186,8 +185,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-        // Liberar el MediaPlayer cuando se destruye la superficie
         if (transitionSound != null) {
             transitionSound.release();
             transitionSound = null;
@@ -199,13 +196,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         calculateGameArea();
     }
 
-    // Calcula el tamaño de cada bloque para que el juego se vea bien en cualquier pantalla
     private void calculateGameArea() {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density;
 
-        int controlsAreaWidth = (int)(180 * density);
-        int margin = (int)(16 * density);
+        int controlsAreaWidth = (int) (180 * density);
+        int margin = (int) (16 * density);
 
         int availableWidth = getWidth() - controlsAreaWidth - (2 * margin);
         int availableHeight = getHeight() - (2 * margin);
@@ -214,8 +210,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         int maxBlockSizeByHeight = availableHeight / GRID_HEIGHT;
 
         dynamicBlockSize = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight);
-
-        // Asegurarnos que sea al menos 1
         if (dynamicBlockSize < 1) {
             dynamicBlockSize = 1;
         }
@@ -259,29 +253,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         Point head = new Point(snake.get(0));
         switch (currentDirection) {
-            case UP:    head.y--; break;
-            case DOWN:  head.y++; break;
-            case LEFT:  head.x--; break;
+            case UP: head.y--; break;
+            case DOWN: head.y++; break;
+            case LEFT: head.x--; break;
             case RIGHT: head.x++; break;
         }
 
-        // Detectar cambio de fondo al alcanzar 100 puntos
         if (!backgroundChanged && !transitionInProgress && score >= 50) {
             startBackgroundTransition();
         }
 
-        // Actualizar transición si está en progreso
         if (transitionInProgress) {
             updateTransition();
         }
 
-        // Si choca contra los bordes, se acaba la partida
         if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
             gameOver = true;
             return;
         }
 
-        // Si te muerdes a ti mismo, también se acaba
         for (int i = 1; i < snake.size(); i++) {
             if (head.equals(snake.get(i))) {
                 gameOver = true;
@@ -292,16 +282,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         snake.add(0, head);
 
         if (head.equals(food)) {
-            // Comer incrementa puntos y puede dar monedas
             score += 10;
             coins += isGolden ? 5 : 1;
             prefs.edit().putInt("coins", coins).apply();
-
-            // Intentamos sincronizar monedas con Firebase
             saveCoinsToFirebase();
-
             generateFood();
-            // Reajustamos el área por si hace falta
             calculateGameArea();
         } else {
             snake.remove(snake.size() - 1);
@@ -312,15 +297,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         transitionInProgress = true;
         transitionStartTime = System.currentTimeMillis();
         transitionProgress = 0f;
-
-        // Reproducir sonido de transición
         playTransitionSound();
     }
 
     private void playTransitionSound() {
         if (transitionSound != null && !soundPlayed) {
             try {
-                // Reiniciar si ya estaba reproduciéndose
                 transitionSound.seekTo(0);
                 transitionSound.start();
                 soundPlayed = true;
@@ -333,9 +315,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private void updateTransition() {
         long currentTime = System.currentTimeMillis();
         float elapsed = (currentTime - transitionStartTime) / 1000f;
-
         transitionProgress = elapsed / TRANSITION_DURATION;
-
         if (transitionProgress >= 1f) {
             transitionInProgress = false;
             backgroundChanged = true;
@@ -349,26 +329,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
-    // Llamado desde GameActivity cuando cargamos monedas desde Firebase
-    public void updateCoinsFromFirebase(int firebaseCoins) {
-        this.coins = firebaseCoins;
-    }
-
     private void gameOver() {
         gameOver = true;
     }
 
     private void drawGame(Canvas canvas) {
-        canvas.drawColor(Color.BLACK);
+        // Actualizar nightMode en cada frame
+        nightMode = prefs.getBoolean("night_mode", true);
+
+        // Fondo: negro en modo noche, gris claro en modo día
+        canvas.drawColor(nightMode ? Color.BLACK : Color.parseColor("#F5F5F5"));
 
         if (dynamicBlockSize == 0) {
             calculateGameArea();
         }
 
-        // Dibujar fondos con transición
+        // Dibujar fondos con transición (sin cambios)
         drawBackgroundWithTransition(canvas);
 
-        paint.setColor(Color.WHITE);
+        paint.setColor(nightMode ? Color.WHITE : Color.BLACK);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(4);
         paint.setAlpha(255);
@@ -387,7 +366,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         if (isGolden) {
             paint.setColor(Color.parseColor("#FFD700"));
         } else {
-            paint.setColor(Color.RED);
+            // Manzana blanca en noche, negra en día
+            paint.setColor(nightMode ? Color.WHITE : Color.BLACK);
         }
         Rect foodRect = new Rect(
                 gameAreaOffsetX + food.x * dynamicBlockSize,
@@ -427,14 +407,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             );
             canvas.drawRect(segmentRect, paint);
 
-            paint.setColor(Color.DKGRAY);
+            // Borde de la serpiente: gris oscuro en noche, gris claro en día
+            paint.setColor(nightMode ? Color.DKGRAY : Color.LTGRAY);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(2);
             canvas.drawRect(segmentRect, paint);
             paint.setStyle(Paint.Style.FILL);
         }
 
-        // Si la partida terminó, dibujamos un mensaje claro para reiniciar
         if (gameOver) {
             drawGameOver(canvas);
         }
@@ -450,10 +430,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
 
         if (transitionInProgress) {
-            // Durante la transición: dibujar ambos fondos con desplazamiento
             int offset = (int) (gameAreaHeight * transitionProgress);
-
-            // Fondo actual (Tierra) desplazándose hacia arriba
             android.graphics.Bitmap currentBg = BitmapFactory.decodeResource(getResources(), R.mipmap.fondolvl1);
             if (currentBg != null) {
                 Rect currentRect = new Rect(
@@ -464,8 +441,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 );
                 canvas.drawBitmap(currentBg, null, currentRect, paint);
             }
-
-            // Nuevo fondo (Marte) entrando desde abajo
             android.graphics.Bitmap targetBg = BitmapFactory.decodeResource(getResources(), R.mipmap.fondo_marte);
             if (targetBg != null) {
                 Rect targetRect = new Rect(
@@ -477,7 +452,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 canvas.drawBitmap(targetBg, null, targetRect, paint);
             }
         } else {
-            // Fuera de transición: dibujar solo el fondo actual
             android.graphics.Bitmap backgroundBitmap = BitmapFactory.decodeResource(getResources(), currentBackground);
             if (backgroundBitmap != null) {
                 Paint backgroundPaint = new Paint();
@@ -493,8 +467,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint.setColor(Color.RED);
         paint.setTextSize(60);
         paint.setStyle(Paint.Style.FILL);
-
-        // Usamos ResourcesCompat para obtener la fuente y mantener compatibilidad con API < 26
         Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
         if (tf != null) {
             paint.setTypeface(tf);
@@ -513,22 +485,21 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void drawGameInfo(Canvas canvas) {
-        paint.setColor(Color.WHITE);
+        // Texto: blanco en noche, negro en día
+        paint.setColor(nightMode ? Color.WHITE : Color.BLACK);
         paint.setTextSize(36);
-    Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
+        Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
         if (tf != null) {
             paint.setTypeface(tf);
         } else {
             paint.setTypeface(Typeface.MONOSPACE);
         }
-
         canvas.drawText("PUNTUACIÓN: " + score, 50, 50, paint);
 
         paint.setTextSize(20);
         canvas.drawText("Come las manzanas!", 50, 90, paint);
     }
 
-    // Método para reiniciar el juego
     public void restartGame() {
         initGame();
     }
@@ -567,8 +538,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     public void stopGame() {
         running = false;
-
-        // Liberar el MediaPlayer cuando se detiene el juego
         if (transitionSound != null) {
             transitionSound.release();
             transitionSound = null;
