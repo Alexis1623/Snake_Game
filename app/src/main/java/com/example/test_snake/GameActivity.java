@@ -74,7 +74,7 @@ public class GameActivity extends AppCompatActivity {
         globalScoresRef = FirebaseDatabase.getInstance().getReference("global_scores");
         coinsRef = FirebaseDatabase.getInstance().getReference("user_coins").child(username);
 
-        // Cargar monedas si las hay guardadas en Firebase
+        // Cargar monedas desde Firebase (si las hay)
         loadCoinsFromFirebase();
 
         // Inicializar vistas
@@ -85,11 +85,13 @@ public class GameActivity extends AppCompatActivity {
         btnLeft = findViewById(R.id.btnLeft);
         btnRight= findViewById(R.id.btnRight);
 
+        // Configurar botones de dirección
         setupControls();
 
         // Reiniciar la partida al tocar si el juego terminó
         gameView.setOnTouchListener((v, event) -> {
             if (gameView.isGameOver() && event.getAction() == MotionEvent.ACTION_DOWN) {
+                // Guardar score actual
                 saveScoreToFirebase(gameView.getScore());
                 gameView.restartGame();
                 updateScore();
@@ -102,14 +104,18 @@ public class GameActivity extends AppCompatActivity {
         startScoreUpdate();
     }
 
-    /** Pide permisos de ubicación y, si están concedidos, obtiene el país */
+    // ─────────────────────────────────────────────
+    //          PERMISOS Y OBTENCIÓN DE PAÍS
+    // ─────────────────────────────────────────────
+
     private void requestLocationPermissionAndGetCountry() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                     this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    LOCATION_PERMISSION_REQUEST_CODE);
+                    LOCATION_PERMISSION_REQUEST_CODE
+            );
         } else {
             getUserCountry();
         }
@@ -124,7 +130,6 @@ public class GameActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getUserCountry();
             } else {
-                Log.w(TAG, "Permiso de ubicación denegado. País por defecto: Unknown");
                 userCountry = "Unknown";
             }
         }
@@ -132,8 +137,8 @@ public class GameActivity extends AppCompatActivity {
 
     /** Recupera la última ubicación conocida y traduce a nombre de país */
     private void getUserCountry() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         fusedLocationClient.getLastLocation()
@@ -141,14 +146,10 @@ public class GameActivity extends AppCompatActivity {
                     if (location != null) {
                         getCountryFromLocation(location);
                     } else {
-                        Log.w(TAG, "No se pudo obtener ubicación. País por defecto: Unknown");
                         userCountry = "Unknown";
                     }
                 })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo ubicación: " + e.getMessage());
-                    userCountry = "Unknown";
-                });
+                .addOnFailureListener(e -> userCountry = "Unknown");
     }
 
     /** Usa Geocoder para obtener el país a partir de la ubicación */
@@ -161,23 +162,25 @@ public class GameActivity extends AppCompatActivity {
                 String country = addresses.get(0).getCountryName();
                 if (country != null && !country.isEmpty()) {
                     userCountry = country;
+                    // Guardar país en SharedPreferences
                     SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                     prefs.edit().putString("userCountry", userCountry).apply();
-                    Log.d(TAG, "País detectado: " + userCountry);
                 } else {
                     userCountry = "Unknown";
                 }
             } else {
                 userCountry = "Unknown";
-                Log.w(TAG, "No se pudo obtener el nombre del país");
             }
         } catch (IOException e) {
-            Log.e(TAG, "Error en Geocoder: " + e.getMessage());
             userCountry = "Unknown";
         }
     }
 
-    /** Carga el número de monedas desde Firebase y actualiza GameView */
+    // ─────────────────────────────────────────────
+    //             CARGA DE MONEDAS (COINS)
+    // ─────────────────────────────────────────────
+
+    /** Carga las monedas desde Firebase y actualiza GameView */
     private void loadCoinsFromFirebase() {
         coinsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -185,10 +188,11 @@ public class GameActivity extends AppCompatActivity {
                 if (snapshot.exists()) {
                     Integer firebaseCoins = snapshot.getValue(Integer.class);
                     if (firebaseCoins != null) {
-                        // Guardamos en SharedPreferences por si acaso
+                        // Guardar en SharedPreferences por si acaso
                         SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
                         prefs.edit().putInt("coins", firebaseCoins).apply();
-                        // Informamos a GameView (este método debes implementarlo en GameView)
+
+                        // Informar al GameView (debes implementar updateCoinsFromFirebase en GameView)
                         if (gameView != null) {
                             gameView.updateCoinsFromFirebase(firebaseCoins);
                         }
@@ -198,12 +202,15 @@ public class GameActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                // Si falla Firebase, seguimos usando las monedas locales
+                // Si falla Firebase, seguimos usando las monedas locales guardadas en SharedPreferences
             }
         });
     }
 
-    /** Configura los botones de dirección */
+    // ─────────────────────────────────────────────
+    //                    CONTROLES
+    // ─────────────────────────────────────────────
+
     private void setupControls() {
         btnUp.setOnClickListener(v -> gameView.setDirectionUp());
         btnDown.setOnClickListener(v -> gameView.setDirectionDown());
@@ -211,14 +218,19 @@ public class GameActivity extends AppCompatActivity {
         btnRight.setOnClickListener(v -> gameView.setDirectionRight());
     }
 
-    /** Hilo que actualiza el marcador cada 100 ms y guarda el score al terminar */
+    // ─────────────────────────────────────────────
+    //           ACTUALIZACIÓN DEL SCORE
+    // ─────────────────────────────────────────────
+
+    /** Hilo que actualiza el score en pantalla y guarda score al terminar */
     private void startScoreUpdate() {
         new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(100); // Actualiza cada 100 ms
                     runOnUiThread(() -> {
                         updateScore();
+                        // Guardar score cuando termina la partida
                         if (gameView.isGameOver()
                                 && gameView.getScore() > 0
                                 && lastSavedScore != gameView.getScore()) {
@@ -232,21 +244,27 @@ public class GameActivity extends AppCompatActivity {
         }).start();
     }
 
-    /** Muestra el marcador en pantalla */
     private void updateScore() {
         scoreText.setText("SCORE: " + gameView.getScore());
     }
 
-    /** Guarda el score en Firebase en el historial personal, top global y top por país */
+    // ─────────────────────────────────────────────
+    //        GUARDAR SCORE EN FIREBASE
+    // ─────────────────────────────────────────────
+
+    /**
+     * Guarda el score en Firebase en:
+     * 1. El historial personal del usuario
+     * 2. El top 100 global (global_scores)
+     * 3. El top 100 de su país (country_scores)
+     */
     private void saveScoreToFirebase(final int score) {
         if (score == 0 || score == lastSavedScore) return;
 
         lastSavedScore = score;
         final long timestamp = System.currentTimeMillis();
-        Log.d(TAG, "Guardando score: " + score
-                + " para usuario: " + username + " en país: " + userCountry);
 
-        // Historial personal
+        // Guardar en historial personal
         String scoreId = scoresRef.push().getKey();
         if (scoreId != null) {
             Map<String, Object> scoreData = new HashMap<>();
@@ -254,24 +272,18 @@ public class GameActivity extends AppCompatActivity {
             scoreData.put("timestamp", timestamp);
             scoreData.put("username", username);
             scoreData.put("country", userCountry);
-            scoresRef.child(scoreId).setValue(scoreData)
-                    .addOnSuccessListener(aVoid ->
-                            Log.d(TAG, "Score personal guardado exitosamente"))
-                    .addOnFailureListener(e ->
-                            Log.e(TAG, "Error guardando score personal: " + e.getMessage()));
+            scoresRef.child(scoreId).setValue(scoreData);
         }
 
-        // Top global y top por país
+        // Guardar en rankings
         checkAndSaveGlobalScore(score, timestamp);
         saveCountryScore(score, timestamp);
     }
 
-    /** Guarda el score en el top 100 por país si corresponde */
+    /** Guarda el score en el top 100 por país */
     private void saveCountryScore(final int score, final long timestamp) {
-        if (userCountry.equals("Unknown")) {
-            Log.w(TAG, "País desconocido, no se guarda en ranking local");
-            return;
-        }
+        if (userCountry.equals("Unknown")) return;
+
         countryScoresRef = FirebaseDatabase.getInstance()
                 .getReference("country_scores")
                 .child(userCountry);
@@ -280,23 +292,25 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 List<ScoreEntry> countryScores = new ArrayList<>();
+
+                // Recolectar todos los scores actuales
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     Long scoreValue = snap.child("score").getValue(Long.class);
                     if (scoreValue != null) {
-                        countryScores.add(
-                                new ScoreEntry(snap.getKey(), scoreValue.intValue()));
+                        countryScores.add(new ScoreEntry(snap.getKey(), scoreValue.intValue()));
                     }
                 }
-                // Añadir el nuevo score y ordenar
+
+                // Añadir el nuevo score y ordenar de mayor a menor
                 countryScores.add(new ScoreEntry(null, score));
-                Collections.sort(countryScores,
-                        (s1, s2) -> Integer.compare(s2.score, s1.score));
+                Collections.sort(countryScores, (s1, s2) -> Integer.compare(s2.score, s1.score));
 
                 boolean isTop100 = false;
                 for (int i = 0; i < countryScores.size(); i++) {
                     if (i < 100 && countryScores.get(i).key == null) {
                         isTop100 = true;
                     } else if (i >= 100 && countryScores.get(i).key != null) {
+                        // Ya no pertenece al top 100: eliminar
                         String keyToRemove = countryScores.get(i).key;
                         countryScoresRef.child(keyToRemove).removeValue();
                     }
@@ -312,15 +326,12 @@ public class GameActivity extends AppCompatActivity {
                         countryScoreData.put("country", userCountry);
                         countryScoresRef.child(newScoreId).setValue(countryScoreData)
                                 .addOnSuccessListener(aVoid -> {
-                                    Log.d(TAG, "Score guardado en top " + userCountry);
+                                    // Notificar al usuario que entró al top 100 del país
                                     runOnUiThread(() ->
                                             Toast.makeText(GameActivity.this,
-                                                    "¡Top 100 de "
-                                                            + userCountry + "! Score: " + score,
+                                                    "¡Top 100 de " + userCountry + "! Score: " + score,
                                                     Toast.LENGTH_SHORT).show());
-                                })
-                                .addOnFailureListener(e ->
-                                        Log.e(TAG, "Error guardando score en país: " + e.getMessage()));
+                                });
                     }
                 }
             }
@@ -334,31 +345,35 @@ public class GameActivity extends AppCompatActivity {
 
     /** Comprueba si el score entra en el top 10 global */
     private void checkAndSaveGlobalScore(final int score, final long timestamp) {
-        Log.d(TAG, "Verificando si score " + score + " califica para top 10");
         globalScoresRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 List<ScoreEntry> allScores = new ArrayList<>();
+
+                // Recolectar todos los scores globales
                 for (DataSnapshot snap : snapshot.getChildren()) {
                     Long scoreValue = snap.child("score").getValue(Long.class);
                     if (scoreValue != null) {
-                        allScores.add(new ScoreEntry(snap.getKey(),
-                                scoreValue.intValue()));
+                        allScores.add(new ScoreEntry(snap.getKey(), scoreValue.intValue()));
                     }
                 }
+
+                // Añadir el nuevo score y ordenar
                 allScores.add(new ScoreEntry(null, score));
-                Collections.sort(allScores,
-                        (s1, s2) -> Integer.compare(s2.score, s1.score));
+                Collections.sort(allScores, (s1, s2) -> Integer.compare(s2.score, s1.score));
 
                 boolean isTop10 = false;
                 for (int i = 0; i < allScores.size(); i++) {
-                    if (i < 10 && allScores.get(i).key == null) {
+                    ScoreEntry entry = allScores.get(i);
+                    if (i < 10 && entry.key == null) {
                         isTop10 = true;
-                    } else if (i >= 10 && allScores.get(i).key != null) {
-                        String keyToRemove = allScores.get(i).key;
+                    } else if (i >= 10 && entry.key != null) {
+                        // Eliminar scores fuera del top 10
+                        String keyToRemove = entry.key;
                         globalScoresRef.child(keyToRemove).removeValue();
                     }
                 }
+
                 if (isTop10) {
                     String newScoreId = globalScoresRef.push().getKey();
                     if (newScoreId != null) {
@@ -369,14 +384,11 @@ public class GameActivity extends AppCompatActivity {
                         globalScoreData.put("country", userCountry);
                         globalScoresRef.child(newScoreId).setValue(globalScoreData)
                                 .addOnSuccessListener(aVoid -> {
-                                    Log.d(TAG, "Score guardado en top 10 global");
                                     runOnUiThread(() ->
                                             Toast.makeText(GameActivity.this,
                                                     "¡Top 10 Global! Score: " + score,
                                                     Toast.LENGTH_SHORT).show());
-                                })
-                                .addOnFailureListener(e ->
-                                        Log.e(TAG, "Error guardando score global: " + e.getMessage()));
+                                });
                     }
                 }
             }
@@ -409,6 +421,6 @@ public class GameActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // No es necesario reanudar nada especial; la lógica está en GameView
+        // No hacemos nada especial aquí; el juego se reanuda con interacciones
     }
 }
