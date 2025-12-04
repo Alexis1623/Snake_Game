@@ -233,7 +233,7 @@
                 android:thumbTint="#00FF00"
                 android:trackTint="#AAAAAA" />
         </LinearLayout>
-        
+
 
         <TextView
             android:layout_width="match_parent"
@@ -339,7 +339,6 @@
                 android:thumbTint="#00FF00"
                 android:trackTint="#AAAAAA" />
         </LinearLayout>
-
         <!-- ================= CONTROLES ================= -->
 
         <TextView
@@ -515,6 +514,7 @@
             android:background="@drawable/button_retro_style"
             android:fontFamily="@font/vcr_osd_mono_1_001"
             android:layout_marginTop="16dp" />
+
     </LinearLayout>
 
 </ScrollView>
