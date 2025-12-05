@@ -78,6 +78,258 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     // MediaPlayer para el sonido de transición
     private MediaPlayer transitionSound;
 
+    // ============ SISTEMA DE ENEMIGOS ============
+    private List<EnemySnake> enemies;
+    private int maxEnemies = 0;
+    private boolean enemiesActive = false;
+
+    // ============ ANIMACIÓN DE QUEMARSE ============
+    private BurnAnimation burnAnimation;
+    private boolean isBurning = false;
+    private long burnStartTime = 0;
+    private static final long BURN_DURATION = 1000; // 1 segundo de animación
+    private MediaPlayer burnSound;
+
+    // ============ CLASE ENEMY SNAKE (MÁS LARGA) ============
+    private class EnemySnake {
+        List<Point> body;
+        Direction direction;
+        boolean isVertical;
+        int speedCounter = 0;
+        int speedDelay = 3; // Más lento que el jugador
+        int length = 3; // Longitud inicial del enemigo
+
+        EnemySnake(Point startPos, boolean vertical) {
+            this.body = new ArrayList<>();
+            this.isVertical = vertical;
+
+            // Determinar dirección inicial
+            if (vertical) {
+                this.direction = random.nextBoolean() ? Direction.DOWN : Direction.UP;
+                // Crear cuerpo vertical
+                for (int i = 0; i < length; i++) {
+                    if (direction == Direction.DOWN) {
+                        body.add(new Point(startPos.x, startPos.y - i));
+                    } else {
+                        body.add(new Point(startPos.x, startPos.y + i));
+                    }
+                }
+            } else {
+                this.direction = random.nextBoolean() ? Direction.RIGHT : Direction.LEFT;
+                // Crear cuerpo horizontal
+                for (int i = 0; i < length; i++) {
+                    if (direction == Direction.RIGHT) {
+                        body.add(new Point(startPos.x - i, startPos.y));
+                    } else {
+                        body.add(new Point(startPos.x + i, startPos.y));
+                    }
+                }
+            }
+        }
+
+        void move() {
+            speedCounter++;
+            if (speedCounter < speedDelay) return;
+            speedCounter = 0;
+
+            // Mover la cabeza según dirección
+            Point head = new Point(body.get(0));
+            switch (direction) {
+                case UP:
+                    head.y--;
+                    if (head.y < 0) {
+                        head.y = GRID_HEIGHT - 1;
+                        // Cambiar dirección aleatoriamente al cruzar bordes
+                        if (random.nextBoolean()) {
+                            direction = Direction.DOWN;
+                        } else if (random.nextBoolean() && !isVertical) {
+                            direction = random.nextBoolean() ? Direction.LEFT : Direction.RIGHT;
+                            isVertical = false;
+                        }
+                    }
+                    break;
+                case DOWN:
+                    head.y++;
+                    if (head.y >= GRID_HEIGHT) {
+                        head.y = 0;
+                        if (random.nextBoolean()) {
+                            direction = Direction.UP;
+                        } else if (random.nextBoolean() && !isVertical) {
+                            direction = random.nextBoolean() ? Direction.LEFT : Direction.RIGHT;
+                            isVertical = false;
+                        }
+                    }
+                    break;
+                case LEFT:
+                    head.x--;
+                    if (head.x < 0) {
+                        head.x = GRID_WIDTH - 1;
+                        if (random.nextBoolean()) {
+                            direction = Direction.RIGHT;
+                        } else if (random.nextBoolean() && isVertical) {
+                            direction = random.nextBoolean() ? Direction.UP : Direction.DOWN;
+                            isVertical = true;
+                        }
+                    }
+                    break;
+                case RIGHT:
+                    head.x++;
+                    if (head.x >= GRID_WIDTH) {
+                        head.x = 0;
+                        if (random.nextBoolean()) {
+                            direction = Direction.LEFT;
+                        } else if (random.nextBoolean() && isVertical) {
+                            direction = random.nextBoolean() ? Direction.UP : Direction.DOWN;
+                            isVertical = true;
+                        }
+                    }
+                    break;
+            }
+
+            // Insertar nueva cabeza
+            body.add(0, head);
+
+            // Mantener longitud fija (remover cola)
+            if (body.size() > length) {
+                body.remove(body.size() - 1);
+            }
+        }
+
+        // Verificar colisión con la serpiente del jugador
+        boolean collidesWith(Point point) {
+            for (Point segment : body) {
+                if (segment.equals(point)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Verificar colisión con otro enemigo
+        boolean collidesWithEnemy(EnemySnake other) {
+            for (Point segment : body) {
+                if (other.collidesWith(segment)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    // ============ CLASE ANIMACIÓN DE QUEMARSE ============
+    private class BurnAnimation {
+        Point position;
+        float progress = 0f; // 0 a 1
+        int particleCount = 25;
+        List<Particle> particles = new ArrayList<>();
+
+        BurnAnimation(Point pos) {
+            this.position = pos;
+            createParticles();
+        }
+
+        void createParticles() {
+            particles.clear();
+            for (int i = 0; i < particleCount; i++) {
+                particles.add(new Particle(
+                        position.x + 0.5f,
+                        position.y + 0.5f,
+                        random.nextFloat() * 360,
+                        random.nextFloat() * 3 + 1,
+                        random.nextFloat() * 0.7f + 0.3f
+                ));
+            }
+        }
+
+        void update(float deltaTime) {
+            progress += deltaTime / (BURN_DURATION / 1000f);
+            if (progress > 1f) progress = 1f;
+
+            for (Particle particle : particles) {
+                particle.update(deltaTime);
+            }
+        }
+
+        boolean isFinished() {
+            return progress >= 1f;
+        }
+
+        void draw(Canvas canvas) {
+            // Dibujar partículas de fuego
+            for (Particle particle : particles) {
+                particle.draw(canvas);
+            }
+
+            // Dibujar explosión central
+            float explosionProgress = Math.min(progress * 2, 1f);
+            if (explosionProgress < 1f) {
+                float explosionSize = explosionProgress * dynamicBlockSize * 1.5f;
+                paint.setColor(Color.YELLOW);
+                paint.setAlpha((int)(255 * (1 - explosionProgress)));
+                canvas.drawCircle(
+                        gameAreaOffsetX + (position.x + 0.5f) * dynamicBlockSize,
+                        gameAreaOffsetY + (position.y + 0.5f) * dynamicBlockSize,
+                        explosionSize / 2,
+                        paint
+                );
+                paint.setAlpha(255);
+            }
+        }
+    }
+
+    // ============ CLASE PARTÍCULAS DE FUEGO ============
+    private class Particle {
+        float x, y;
+        float angle;
+        float speed;
+        float life;
+        float originalLife;
+
+        Particle(float startX, float startY, float angle, float speed, float life) {
+            this.x = startX;
+            this.y = startY;
+            this.angle = angle;
+            this.speed = speed;
+            this.life = life;
+            this.originalLife = life;
+        }
+
+        void update(float deltaTime) {
+            life -= deltaTime;
+            if (life <= 0) return;
+
+            float rad = (float)Math.toRadians(angle);
+            x += Math.cos(rad) * speed * deltaTime * 8;
+            y += Math.sin(rad) * speed * deltaTime * 8;
+
+            // Gravedad leve
+            y += deltaTime * 2;
+        }
+
+        void draw(Canvas canvas) {
+            if (life <= 0) return;
+
+            float progress = life / originalLife;
+            int alpha = (int)(255 * progress);
+            int size = (int)(dynamicBlockSize * 0.4f * progress);
+
+            // Color de fuego (naranja a rojo)
+            int r = 255;
+            int g = (int)(80 + 175 * (1 - progress));
+            int b = 0;
+
+            paint.setColor(Color.argb(alpha, r, g, b));
+            paint.setStyle(Paint.Style.FILL);
+
+            canvas.drawCircle(
+                    gameAreaOffsetX + x * dynamicBlockSize,
+                    gameAreaOffsetY + y * dynamicBlockSize,
+                    size / 2,
+                    paint
+            );
+        }
+    }
+
     private enum Direction {
         UP, DOWN, LEFT, RIGHT
     }
@@ -107,16 +359,16 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         coins = prefs.getInt("coins", 0);
         equippedSkin = prefs.getString("equipped_skin", "skin_default");
         username = prefs.getString("username", "Invitado");
-        // Leer night_mode (true = modo noche, false = modo día)
         nightMode = prefs.getBoolean("night_mode", true);
 
-        // Inicializamos la referencia a Firebase para las monedas del usuario
         coinsRef = FirebaseDatabase.getInstance()
                 .getReference("user_coins")
                 .child(username);
 
-        // Inicializar el MediaPlayer para el sonido de transición
         initTransitionSound();
+        initBurnSound();
+
+        enemies = new ArrayList<>();
 
         initGame();
     }
@@ -132,6 +384,20 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
+    private void initBurnSound() {
+        try {
+            burnSound = MediaPlayer.create(getContext(), R.raw.explosion);
+            if (burnSound != null) {
+                burnSound.setVolume(1.0f, 1.0f);
+                burnSound.setOnCompletionListener(mp -> {
+                    // No hacer nada al completar
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void initGame() {
         snake = new ArrayList<>();
         snake.add(new Point(GRID_WIDTH / 2, GRID_HEIGHT / 2));
@@ -139,6 +405,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         snake.add(new Point(GRID_WIDTH / 2 - 2, GRID_HEIGHT / 2));
 
         generateFood();
+
+        enemies.clear();
+        maxEnemies = 0;
+        enemiesActive = false;
+        isBurning = false;
+        burnAnimation = null;
 
         score = 0;
         gameOver = false;
@@ -153,7 +425,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void generateFood() {
-        while (true) {
+        int attempts = 0;
+        while (attempts < 100) {
             int x = random.nextInt(GRID_WIDTH);
             int y = random.nextInt(GRID_HEIGHT);
             food = new Point(x, y);
@@ -165,9 +438,128 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     break;
                 }
             }
-            if (!collision) break;
+
+            // Verificar colisión con enemigos
+            if (!collision && enemiesActive) {
+                for (EnemySnake enemy : enemies) {
+                    if (enemy.collidesWith(food)) {
+                        collision = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!collision) return;
+            attempts++;
         }
         isGolden = random.nextFloat() < 0.2;
+    }
+
+    private void generateEnemy() {
+        int attempts = 0;
+        while (attempts < 50) {
+            // POSICIÓN ALEATORIA EN CUALQUIER PARTE DEL MAPA (no solo abajo)
+            int startX, startY;
+            boolean vertical = random.nextBoolean();
+
+            if (vertical) {
+                // Enemigo vertical - puede aparecer en cualquier columna
+                startX = random.nextInt(GRID_WIDTH);
+                // Aparece en borde superior o inferior
+                startY = random.nextBoolean() ? 0 : GRID_HEIGHT - 1;
+            } else {
+                // Enemigo horizontal - puede aparecer en cualquier fila
+                startY = random.nextInt(GRID_HEIGHT);
+                // Aparece en borde izquierdo o derecho
+                startX = random.nextBoolean() ? 0 : GRID_WIDTH - 1;
+            }
+
+            Point startPos = new Point(startX, startY);
+            EnemySnake newEnemy = new EnemySnake(startPos, vertical);
+
+            // Verificar colisiones
+            boolean collision = false;
+
+            // Con la serpiente del jugador
+            for (Point segment : snake) {
+                if (newEnemy.collidesWith(segment)) {
+                    collision = true;
+                    break;
+                }
+            }
+
+            // Con la comida
+            if (newEnemy.collidesWith(food)) {
+                collision = true;
+            }
+
+            // Con otros enemigos
+            if (!collision) {
+                for (EnemySnake existingEnemy : enemies) {
+                    if (newEnemy.collidesWithEnemy(existingEnemy)) {
+                        collision = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!collision) {
+                enemies.add(newEnemy);
+                return;
+            }
+
+            attempts++;
+        }
+    }
+
+    private void manageEnemies() {
+        if (score >= 30 && !enemiesActive) {
+            enemiesActive = true;
+            maxEnemies = 1;
+        }
+
+        if (score >= 90 && maxEnemies < 2) {
+            maxEnemies = 2;
+        }
+
+        while (enemies.size() < maxEnemies && enemiesActive) {
+            generateEnemy();
+        }
+    }
+
+    private void startBurnAnimation(Point position) {
+        isBurning = true;
+        burnStartTime = System.currentTimeMillis();
+        burnAnimation = new BurnAnimation(position);
+
+        // REPRODUCIR SONIDO DE EXPLOSIÓN - CORREGIDO
+        if (burnSound != null) {
+            try {
+                // Detener si está sonando
+                if (burnSound.isPlaying()) {
+                    burnSound.stop();
+                }
+                // Resetear y reproducir
+                burnSound.seekTo(0);
+                burnSound.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void updateBurnAnimation() {
+        if (!isBurning || burnAnimation == null) return;
+
+        long currentTime = System.currentTimeMillis();
+        float deltaTime = (currentTime - burnStartTime) / 1000f;
+        burnAnimation.update(deltaTime);
+
+        if (burnAnimation.isFinished()) {
+            isBurning = false;
+            burnAnimation = null;
+            gameOver = true; // Game Over después de la animación
+        }
     }
 
     @Override
@@ -189,6 +581,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             transitionSound.release();
             transitionSound = null;
         }
+        if (burnSound != null) {
+            burnSound.release();
+            burnSound = null;
+        }
     }
 
     @Override
@@ -200,25 +596,33 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float density = metrics.density;
 
-        int controlsAreaWidth = (int) (180 * density);
-        int margin = (int) (16 * density);
+        // Panel de controles compacto
+        int controlsAreaWidth = (int) (100 * density); // Muy compacto
+        int margin = (int) (2 * density); // Margen mínimo
 
-        int availableWidth = getWidth() - controlsAreaWidth - (2 * margin);
-        int availableHeight = getHeight() - (2 * margin);
+        // Calcular espacio disponible (90% del ancho total para el juego)
+        int totalAvailableWidth = getWidth() - controlsAreaWidth;
+        int gameWidth = (int) (totalAvailableWidth * 2); // 95% del espacio
+        int gameHeight = (int) (getHeight() * 0.90); // 90% de la altura
 
-        int maxBlockSizeByWidth = availableWidth / GRID_WIDTH;
-        int maxBlockSizeByHeight = availableHeight / GRID_HEIGHT;
+        // Calcular tamaño de bloque
+        dynamicBlockSize = Math.min(gameWidth / GRID_WIDTH, gameHeight / GRID_HEIGHT);
 
-        dynamicBlockSize = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight);
-        if (dynamicBlockSize < 1) {
-            dynamicBlockSize = 1;
+        // Asegurar tamaño mínimo decente
+        if (dynamicBlockSize < 40) {
+            dynamicBlockSize = 40;
         }
 
+        // Dimensiones finales
         gameAreaWidth = GRID_WIDTH * dynamicBlockSize;
         gameAreaHeight = GRID_HEIGHT * dynamicBlockSize;
 
+        // Posición: alineado a la izquierda con margen mínimo
         gameAreaOffsetX = margin;
+        // Centrar verticalmente
         gameAreaOffsetY = (getHeight() - gameAreaHeight) / 2;
+
+
     }
 
     @Override
@@ -249,14 +653,30 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void updateGame() {
+        // Actualizar animación de quemarse si está activa
+        if (isBurning) {
+            updateBurnAnimation();
+            return; // Pausar el juego durante la animación
+        }
+
         currentDirection = nextDirection;
 
-        Point head = new Point(snake.get(0));
-        switch (currentDirection) {
-            case UP: head.y--; break;
-            case DOWN: head.y++; break;
-            case LEFT: head.x--; break;
-            case RIGHT: head.x++; break;
+        // Gestionar enemigos
+        manageEnemies();
+
+        // Mover enemigos
+        for (EnemySnake enemy : enemies) {
+            enemy.move();
+        }
+
+        // Verificar colisión con enemigos - CORREGIDO: verificar TODA la serpiente
+        Point head = snake.get(0);
+        for (EnemySnake enemy : enemies) {
+            if (enemy.collidesWith(head)) {
+                // COLISIÓN DETECTADA - Iniciar animación de quemarse
+                startBurnAnimation(head);
+                return; // Salir del update, el juego continúa en modo animación
+            }
         }
 
         if (!backgroundChanged && !transitionInProgress && score >= 50) {
@@ -267,21 +687,29 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             updateTransition();
         }
 
-        if (head.x < 0 || head.x >= GRID_WIDTH || head.y < 0 || head.y >= GRID_HEIGHT) {
+        Point newHead = new Point(head);
+        switch (currentDirection) {
+            case UP: newHead.y--; break;
+            case DOWN: newHead.y++; break;
+            case LEFT: newHead.x--; break;
+            case RIGHT: newHead.x++; break;
+        }
+
+        if (newHead.x < 0 || newHead.x >= GRID_WIDTH || newHead.y < 0 || newHead.y >= GRID_HEIGHT) {
             gameOver = true;
             return;
         }
 
         for (int i = 1; i < snake.size(); i++) {
-            if (head.equals(snake.get(i))) {
+            if (newHead.equals(snake.get(i))) {
                 gameOver = true;
                 return;
             }
         }
 
-        snake.add(0, head);
+        snake.add(0, newHead);
 
-        if (head.equals(food)) {
+        if (newHead.equals(food)) {
             score += 10;
             coins += isGolden ? 5 : 1;
             prefs.edit().putInt("coins", coins).apply();
@@ -329,22 +757,20 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
-    private void gameOver() {
-        gameOver = true;
+    public void updateCoinsFromFirebase(int firebaseCoins) {
+        this.coins = firebaseCoins;
+        prefs.edit().putInt("coins", firebaseCoins).apply();
     }
 
     private void drawGame(Canvas canvas) {
-        // Actualizar nightMode en cada frame
         nightMode = prefs.getBoolean("night_mode", true);
 
-        // Fondo: negro en modo noche, gris claro en modo día
         canvas.drawColor(nightMode ? Color.BLACK : Color.parseColor("#F5F5F5"));
 
         if (dynamicBlockSize == 0) {
             calculateGameArea();
         }
 
-        // Dibujar fondos con transición (sin cambios)
         drawBackgroundWithTransition(canvas);
 
         paint.setColor(nightMode ? Color.WHITE : Color.BLACK);
@@ -366,7 +792,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         if (isGolden) {
             paint.setColor(Color.parseColor("#FFD700"));
         } else {
-            // Manzana blanca en noche, negra en día
             paint.setColor(nightMode ? Color.WHITE : Color.BLACK);
         }
         Rect foodRect = new Rect(
@@ -377,49 +802,85 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
         canvas.drawRect(foodRect, paint);
 
-        equippedSkin = prefs.getString("equipped_skin", "skin_default");
+        // DIBUJAR ENEMIGOS (serpientes completas)
+        for (EnemySnake enemy : enemies) {
+            for (int i = 0; i < enemy.body.size(); i++) {
+                Point segment = enemy.body.get(i);
 
-        for (int i = 0; i < snake.size(); i++) {
-            Point segment = snake.get(i);
-            if (i == 0) {
-                if ("skin_red".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#FF4444"));
-                } else if ("skin_blue".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#448AFF"));
+                // Color del enemigo: rojo oscuro a rojo claro
+                if (i == 0) {
+                    paint.setColor(Color.parseColor("#FF4444")); // Cabeza más brillante
                 } else {
-                    paint.setColor(Color.GREEN);
+                    paint.setColor(Color.parseColor("#CC0000")); // Cuerpo más oscuro
                 }
-            } else {
-                if ("skin_red".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#B71C1C"));
-                } else if ("skin_blue".equals(equippedSkin)) {
-                    paint.setColor(Color.parseColor("#0D47A1"));
+
+                Rect enemyRect = new Rect(
+                        gameAreaOffsetX + segment.x * dynamicBlockSize,
+                        gameAreaOffsetY + segment.y * dynamicBlockSize,
+                        gameAreaOffsetX + (segment.x + 1) * dynamicBlockSize,
+                        gameAreaOffsetY + (segment.y + 1) * dynamicBlockSize
+                );
+                canvas.drawRect(enemyRect, paint);
+
+                // Borde amarillo para la cabeza, naranja para el cuerpo
+                if (i == 0) {
+                    paint.setColor(Color.YELLOW);
                 } else {
-                    paint.setColor(Color.rgb(0, 150, 0));
+                    paint.setColor(Color.parseColor("#FFA500"));
                 }
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2);
+                canvas.drawRect(enemyRect, paint);
+                paint.setStyle(Paint.Style.FILL);
             }
-
-            Rect segmentRect = new Rect(
-                    gameAreaOffsetX + segment.x * dynamicBlockSize,
-                    gameAreaOffsetY + segment.y * dynamicBlockSize,
-                    gameAreaOffsetX + (segment.x + 1) * dynamicBlockSize,
-                    gameAreaOffsetY + (segment.y + 1) * dynamicBlockSize
-            );
-            canvas.drawRect(segmentRect, paint);
-
-            // Borde de la serpiente: gris oscuro en noche, gris claro en día
-            paint.setColor(nightMode ? Color.DKGRAY : Color.LTGRAY);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2);
-            canvas.drawRect(segmentRect, paint);
-            paint.setStyle(Paint.Style.FILL);
         }
 
-        if (gameOver) {
+        // Dibujar animación de quemarse si está activa
+        if (isBurning && burnAnimation != null) {
+            burnAnimation.draw(canvas);
+
+            // No dibujar la cabeza de la serpiente (está siendo "quemada")
+            for (int i = 1; i < snake.size(); i++) {
+                Point segment = snake.get(i);
+                drawSnakeSegment(canvas, segment, i);
+            }
+        } else {
+            // Dibujar serpiente completa si no hay animación
+            equippedSkin = prefs.getString("equipped_skin", "skin_default");
+            for (int i = 0; i < snake.size(); i++) {
+                drawSnakeSegment(canvas, snake.get(i), i);
+            }
+        }
+
+        if (gameOver && !isBurning) {
             drawGameOver(canvas);
         }
 
         drawGameInfo(canvas);
+    }
+
+    private void drawSnakeSegment(Canvas canvas, Point segment, int index) {
+        if ("skin_red".equals(equippedSkin)) {
+            paint.setColor(index == 0 ? Color.parseColor("#FF4444") : Color.parseColor("#B71C1C"));
+        } else if ("skin_blue".equals(equippedSkin)) {
+            paint.setColor(index == 0 ? Color.parseColor("#448AFF") : Color.parseColor("#0D47A1"));
+        } else {
+            paint.setColor(index == 0 ? Color.GREEN : Color.rgb(0, 150, 0));
+        }
+
+        Rect segmentRect = new Rect(
+                gameAreaOffsetX + segment.x * dynamicBlockSize,
+                gameAreaOffsetY + segment.y * dynamicBlockSize,
+                gameAreaOffsetX + (segment.x + 1) * dynamicBlockSize,
+                gameAreaOffsetY + (segment.y + 1) * dynamicBlockSize
+        );
+        canvas.drawRect(segmentRect, paint);
+
+        paint.setColor(nightMode ? Color.DKGRAY : Color.LTGRAY);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2);
+        canvas.drawRect(segmentRect, paint);
+        paint.setStyle(Paint.Style.FILL);
     }
 
     private void drawBackgroundWithTransition(Canvas canvas) {
@@ -485,7 +946,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void drawGameInfo(Canvas canvas) {
-        // Texto: blanco en noche, negro en día
         paint.setColor(nightMode ? Color.WHITE : Color.BLACK);
         paint.setTextSize(36);
         Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
@@ -494,10 +954,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         } else {
             paint.setTypeface(Typeface.MONOSPACE);
         }
-        canvas.drawText("PUNTUACIÓN: " + score, 50, 50, paint);
 
-        paint.setTextSize(20);
-        canvas.drawText("Come las manzanas!", 50, 90, paint);
     }
 
     public void restartGame() {
@@ -505,25 +962,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     public void setDirectionUp() {
-        if (currentDirection != Direction.DOWN && !gameOver) {
+        if (currentDirection != Direction.DOWN && !gameOver && !isBurning) {
             nextDirection = Direction.UP;
         }
     }
 
     public void setDirectionDown() {
-        if (currentDirection != Direction.UP && !gameOver) {
+        if (currentDirection != Direction.UP && !gameOver && !isBurning) {
             nextDirection = Direction.DOWN;
         }
     }
 
     public void setDirectionLeft() {
-        if (currentDirection != Direction.RIGHT && !gameOver) {
+        if (currentDirection != Direction.RIGHT && !gameOver && !isBurning) {
             nextDirection = Direction.LEFT;
         }
     }
 
     public void setDirectionRight() {
-        if (currentDirection != Direction.LEFT && !gameOver) {
+        if (currentDirection != Direction.LEFT && !gameOver && !isBurning) {
             nextDirection = Direction.RIGHT;
         }
     }
@@ -541,6 +998,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         if (transitionSound != null) {
             transitionSound.release();
             transitionSound = null;
+        }
+        if (burnSound != null) {
+            burnSound.release();
+            burnSound = null;
         }
     }
 }

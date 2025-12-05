@@ -3,10 +3,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.test_snake">
 
+    <!-- PERMISOS FUERA DE <application> -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <application
         android:allowBackup="true"
@@ -16,6 +18,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Test_Snake"
         android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
         tools:targetApi="31">
 
         <!-- LoginActivity ahora será la pantalla de entrada (LAUNCHER) -->
@@ -60,13 +64,13 @@
             android:name=".ScoresActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+
         <activity
             android:name=".StoreActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
+
         <service android:name=".MusicService" />
-
-
 
     </application>
 
