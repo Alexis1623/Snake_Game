@@ -33,6 +33,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private static final int GRID_WIDTH = 40;
     private static final int GRID_HEIGHT = 20;
 
+    // Meta del juego
+    private static final int WIN_SCORE = 350;
+
     // La serpiente: lista de segmentos (cada uno es un punto en la cuadrícula)
     private List<Point> snake;
     private Direction currentDirection = Direction.RIGHT;
@@ -64,6 +67,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     // Estado: ¿terminó la partida?
     private boolean gameOver = false;
+    private boolean gameWon = false; // Nuevo: estado de victoria
 
     // Sistema de fondos y transición
     private int currentBackground = R.mipmap.fondolvl1;
@@ -77,11 +81,80 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     // MediaPlayer para el sonido de transición
     private MediaPlayer transitionSound;
+    private MediaPlayer winSound;
 
     // ============ SISTEMA DE ENEMIGOS ============
     private List<EnemySnake> enemies;
     private int maxEnemies = 0;
     private boolean enemiesActive = false;
+
+    // ============ SISTEMA DE ASTEROIDES ============
+    private List<Asteroid> asteroids;
+    private int maxAsteroids = 0;
+    private boolean asteroidsActive = false;
+
+    // ============ CLASE ASTEROIDE ============
+    private class Asteroid {
+        Point position;
+        int speed;
+        int directionX; // -1 izquierda, 1 derecha, 0 estático
+        int directionY; // -1 arriba, 1 abajo, 0 estático
+        int size; // 1 = pequeño, 2 = mediano, 3 = grande
+
+        Asteroid(Point pos, int speed, int dirX, int dirY, int size) {
+            this.position = pos;
+            this.speed = speed;
+            this.directionX = dirX;
+            this.directionY = dirY;
+            this.size = size;
+        }
+
+        void move() {
+            for (int i = 0; i < speed; i++) {
+                position.x += directionX;
+                position.y += directionY;
+
+                // Rebotar en los bordes
+                if (position.x <= 0 || position.x >= GRID_WIDTH - 1) {
+                    directionX *= -1;
+                    position.x = Math.max(0, Math.min(GRID_WIDTH - 1, position.x));
+                }
+
+                if (position.y <= 0 || position.y >= GRID_HEIGHT - 1) {
+                    directionY *= -1;
+                    position.y = Math.max(0, Math.min(GRID_HEIGHT - 1, position.y));
+                }
+            }
+        }
+
+        boolean collidesWith(Point point) {
+            // Colisión basada en el tamaño del asteroide
+            int halfSize = size / 2;
+            return point.x >= position.x - halfSize &&
+                    point.x <= position.x + halfSize &&
+                    point.y >= position.y - halfSize &&
+                    point.y <= position.y + halfSize;
+        }
+
+        void draw(Canvas canvas) {
+            // Color de asteroide (grises)
+            paint.setColor(Color.parseColor("#808080"));
+
+            // Dibujar asteroide redondeado - CORREGIDO: agregar casting a int
+            int centerX = gameAreaOffsetX + (int)((position.x + 0.5f) * dynamicBlockSize);
+            int centerY = gameAreaOffsetY + (int)((position.y + 0.5f) * dynamicBlockSize);
+            int radius = dynamicBlockSize * size / 3;
+
+            canvas.drawCircle(centerX, centerY, radius, paint);
+
+            // Detalles del asteroide
+            paint.setColor(Color.DKGRAY);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2);
+            canvas.drawCircle(centerX, centerY, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+    }
 
     // ============ ANIMACIÓN DE QUEMARSE ============
     private BurnAnimation burnAnimation;
@@ -367,8 +440,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         initTransitionSound();
         initBurnSound();
+        initWinSound();
 
         enemies = new ArrayList<>();
+        asteroids = new ArrayList<>();
 
         initGame();
     }
@@ -378,6 +453,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             transitionSound = MediaPlayer.create(getContext(), R.raw.lvlup);
             if (transitionSound != null) {
                 transitionSound.setVolume(0.7f, 0.7f);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initWinSound() {
+        try {
+            winSound = MediaPlayer.create(getContext(), R.raw.win_sound); // Necesitarás agregar este archivo
+            if (winSound != null) {
+                winSound.setVolume(1.0f, 1.0f);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -407,13 +493,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         generateFood();
 
         enemies.clear();
+        asteroids.clear();
         maxEnemies = 0;
+        maxAsteroids = 0;
         enemiesActive = false;
+        asteroidsActive = false;
         isBurning = false;
         burnAnimation = null;
 
         score = 0;
         gameOver = false;
+        gameWon = false;
         currentDirection = Direction.RIGHT;
         nextDirection = Direction.RIGHT;
 
@@ -449,10 +539,65 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 }
             }
 
+            // Verificar colisión con asteroides
+            if (!collision && asteroidsActive) {
+                for (Asteroid asteroid : asteroids) {
+                    if (asteroid.collidesWith(food)) {
+                        collision = true;
+                        break;
+                    }
+                }
+            }
+
             if (!collision) return;
             attempts++;
         }
         isGolden = random.nextFloat() < 0.2;
+    }
+
+    private void generateAsteroid() {
+        int attempts = 0;
+        while (attempts < 50) {
+            int x = random.nextInt(GRID_WIDTH);
+            int y = random.nextInt(GRID_HEIGHT);
+            Point pos = new Point(x, y);
+
+            // Verificar que no esté muy cerca de la serpiente
+            boolean tooClose = false;
+            for (Point segment : snake) {
+                int distance = Math.abs(segment.x - x) + Math.abs(segment.y - y);
+                if (distance < 3) {
+                    tooClose = true;
+                    break;
+                }
+            }
+
+            if (tooClose) {
+                attempts++;
+                continue;
+            }
+
+            // Verificar colisión con comida
+            if (food != null && (Math.abs(food.x - x) < 2 && Math.abs(food.y - y) < 2)) {
+                attempts++;
+                continue;
+            }
+
+            // Crear asteroide con propiedades aleatorias
+            int speed = random.nextInt(2) + 1; // 1-2
+            int dirX = random.nextInt(3) - 1; // -1, 0, 1
+            int dirY = random.nextInt(3) - 1; // -1, 0, 1
+            int size = random.nextInt(3) + 1; // 1-3
+
+            // Asegurar que se mueva en alguna dirección
+            if (dirX == 0 && dirY == 0) {
+                dirX = random.nextBoolean() ? 1 : -1;
+            }
+
+            Asteroid asteroid = new Asteroid(pos, speed, dirX, dirY, size);
+            asteroids.add(asteroid);
+            return;
+        }
     }
 
     private void generateEnemy() {
@@ -493,6 +638,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 collision = true;
             }
 
+            // Con asteroides
+            for (Asteroid asteroid : asteroids) {
+                if (asteroid.collidesWith(startPos)) {
+                    collision = true;
+                    break;
+                }
+            }
+
             // Con otros enemigos
             if (!collision) {
                 for (EnemySnake existingEnemy : enemies) {
@@ -512,18 +665,94 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
-    private void manageEnemies() {
-        if (score >= 30 && !enemiesActive) {
-            enemiesActive = true;
-            maxEnemies = 1;
+
+    private void manageEnemiesAndAsteroids() {
+        // GESTIÓN DE ENEMIGOS EXISTENTES (30-90 puntos) - NO SOBREESCRIBIR
+        if (score >= 30 && score < 130) {
+            if (!enemiesActive) {
+                enemiesActive = true;
+            }
+
+            // Enemigos progresivos del sistema original
+            if (score >= 30 && maxEnemies < 1) {
+                maxEnemies = 1;
+            }
+
+            if (score >= 90 && maxEnemies < 2) {
+                maxEnemies = 2;
+            }
         }
 
-        if (score >= 90 && maxEnemies < 2) {
-            maxEnemies = 2;
+        // GESTIÓN DE ENEMIGOS (130-180 puntos) - FASE 2
+        if (score >= 130 && score <= 180) {
+            if (!enemiesActive) {
+                enemiesActive = true;
+            }
+
+            // Aumentar enemigos progresivamente en esta fase
+            if (score >= 130 && score < 150 && maxEnemies < 3) {
+                maxEnemies = 3;
+            }
+
+            if (score >= 150 && score < 170 && maxEnemies < 5) {
+                maxEnemies = 5;
+            }
+
+            if (score >= 170 && maxEnemies < 7) {
+                maxEnemies = 7;
+            }
         }
 
+        // DESACTIVAR ENEMIGOS AL ENTRAR EN FASE DE ASTEROIDES
+        if (score > 180 && score <= 230) {
+            enemiesActive = false;
+            maxEnemies = 0;
+        }
+
+        // GESTIÓN DE ASTEROIDES (180-230 puntos)
+        if (score >= 180 && score <= 230) {
+            if (!asteroidsActive) {
+                asteroidsActive = true;
+                maxAsteroids = 3;
+            }
+
+            // Aumentar asteroides progresivamente
+            if (score >= 200 && score < 220 && maxAsteroids < 5) {
+                maxAsteroids = 5;
+            }
+
+            if (score >= 220 && maxAsteroids < 7) {
+                maxAsteroids = 7;
+            }
+        } else if (score > 230) {
+            asteroidsActive = false;
+            maxAsteroids = 0;
+        }
+
+        // VICTORIA (500 puntos)
+        if (score >= WIN_SCORE && !gameWon) {
+            gameWon = true;
+            playWinSound();
+        }
+
+        // Generar enemigos si están activos
         while (enemies.size() < maxEnemies && enemiesActive) {
             generateEnemy();
+        }
+
+        // Generar asteroides si están activos
+        while (asteroids.size() < maxAsteroids && asteroidsActive) {
+            generateAsteroid();
+        }
+    }
+    private void playWinSound() {
+        if (winSound != null) {
+            try {
+                winSound.seekTo(0);
+                winSound.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -585,6 +814,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             burnSound.release();
             burnSound = null;
         }
+        if (winSound != null) {
+            winSound.release();
+            winSound = null;
+        }
     }
 
     @Override
@@ -621,8 +854,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         gameAreaOffsetX = margin;
         // Centrar verticalmente
         gameAreaOffsetY = (getHeight() - gameAreaHeight) / 2;
-
-
     }
 
     @Override
@@ -632,7 +863,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastUpdateTime > UPDATE_INTERVAL) {
-                if (!gameOver) {
+                if (!gameOver && !gameWon) {
                     updateGame();
                 }
                 lastUpdateTime = currentTime;
@@ -661,21 +892,34 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         currentDirection = nextDirection;
 
-        // Gestionar enemigos
-        manageEnemies();
+        // Gestionar enemigos y asteroides
+        manageEnemiesAndAsteroids();
 
         // Mover enemigos
         for (EnemySnake enemy : enemies) {
             enemy.move();
         }
 
-        // Verificar colisión con enemigos - CORREGIDO: verificar TODA la serpiente
+        // Mover asteroides
+        for (Asteroid asteroid : asteroids) {
+            asteroid.move();
+        }
+
+        // Verificar colisión con enemigos
         Point head = snake.get(0);
         for (EnemySnake enemy : enemies) {
             if (enemy.collidesWith(head)) {
                 // COLISIÓN DETECTADA - Iniciar animación de quemarse
                 startBurnAnimation(head);
-                return; // Salir del update, el juego continúa en modo animación
+                return;
+            }
+        }
+
+        // Verificar colisión con asteroides
+        for (Asteroid asteroid : asteroids) {
+            if (asteroid.collidesWith(head)) {
+                startBurnAnimation(head);
+                return;
             }
         }
 
@@ -802,6 +1046,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
         canvas.drawRect(foodRect, paint);
 
+        // DIBUJAR ASTEROIDES
+        for (Asteroid asteroid : asteroids) {
+            asteroid.draw(canvas);
+        }
+
         // DIBUJAR ENEMIGOS (serpientes completas)
         for (EnemySnake enemy : enemies) {
             for (int i = 0; i < enemy.body.size(); i++) {
@@ -856,6 +1105,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             drawGameOver(canvas);
         }
 
+        if (gameWon) {
+            drawGameWon(canvas);
+        }
+
         drawGameInfo(canvas);
     }
 
@@ -881,6 +1134,33 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint.setStrokeWidth(2);
         canvas.drawRect(segmentRect, paint);
         paint.setStyle(Paint.Style.FILL);
+    }
+
+    private void drawGameWon(Canvas canvas) {
+        paint.setColor(Color.GREEN);
+        paint.setTextSize(60);
+        paint.setStyle(Paint.Style.FILL);
+        Typeface tf = ResourcesCompat.getFont(getContext(), R.font.vcr_osd_mono_1_001);
+        if (tf != null) {
+            paint.setTypeface(tf);
+        } else {
+            paint.setTypeface(Typeface.MONOSPACE);
+        }
+
+        String winText = "¡VICTORIA!";
+        float textWidth = paint.measureText(winText);
+        canvas.drawText(winText, (getWidth() - textWidth) / 2, getHeight() / 2 - 50, paint);
+
+        paint.setColor(Color.YELLOW);
+        paint.setTextSize(40);
+        String scoreText = "Puntos: " + score + "/" + WIN_SCORE;
+        float scoreWidth = paint.measureText(scoreText);
+        canvas.drawText(scoreText, (getWidth() - scoreWidth) / 2, getHeight() / 2 + 20, paint);
+
+        paint.setTextSize(30);
+        String restartText = "Toca para jugar de nuevo";
+        float restartWidth = paint.measureText(restartText);
+        canvas.drawText(restartText, (getWidth() - restartWidth) / 2, getHeight() / 2 + 70, paint);
     }
 
     private void drawBackgroundWithTransition(Canvas canvas) {
@@ -955,6 +1235,32 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             paint.setTypeface(Typeface.MONOSPACE);
         }
 
+        // Mostrar nivel de dificultad actual
+        paint.setTextSize(20);
+        String difficultyText = getDifficultyText();
+        paint.setColor(Color.CYAN);
+        canvas.drawText(difficultyText, 10, 40, paint);
+
+        // Mostrar progreso hacia la victoria
+        paint.setColor(Color.YELLOW);
+        String progressText = score + "/" + WIN_SCORE;
+        canvas.drawText(progressText, getWidth() - 80, 40, paint);
+    }
+
+    private String getDifficultyText() {
+        if (score >= 180 && score <= 230) {
+            return "Nivel: Asteroides";
+        } else if (score >= 130 && score <= 180) {
+            return "Nivel: Enemigos x" + maxEnemies;
+        } else if (score >= 90 && score <= 130) {
+            return "Nivel: Enemigos x" + maxEnemies;
+        } else if (score >= 30 && score <= 90) {
+            return "Nivel: Enemigos x1";
+        } else if (score >= 50) {
+            return "Nivel: Fondo cambiado";
+        } else {
+            return "Nivel: Principiante";
+        }
     }
 
     public void restartGame() {
@@ -962,25 +1268,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     public void setDirectionUp() {
-        if (currentDirection != Direction.DOWN && !gameOver && !isBurning) {
+        if (currentDirection != Direction.DOWN && !gameOver && !isBurning && !gameWon) {
             nextDirection = Direction.UP;
         }
     }
 
     public void setDirectionDown() {
-        if (currentDirection != Direction.UP && !gameOver && !isBurning) {
+        if (currentDirection != Direction.UP && !gameOver && !isBurning && !gameWon) {
             nextDirection = Direction.DOWN;
         }
     }
 
     public void setDirectionLeft() {
-        if (currentDirection != Direction.RIGHT && !gameOver && !isBurning) {
+        if (currentDirection != Direction.RIGHT && !gameOver && !isBurning && !gameWon) {
             nextDirection = Direction.LEFT;
         }
     }
 
     public void setDirectionRight() {
-        if (currentDirection != Direction.LEFT && !gameOver && !isBurning) {
+        if (currentDirection != Direction.LEFT && !gameOver && !isBurning && !gameWon) {
             nextDirection = Direction.RIGHT;
         }
     }
@@ -990,7 +1296,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     public boolean isGameOver() {
-        return gameOver;
+        return gameOver || gameWon;
+    }
+
+    public boolean isGameWon() {
+        return gameWon;
     }
 
     public void stopGame() {
@@ -1002,6 +1312,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         if (burnSound != null) {
             burnSound.release();
             burnSound = null;
+        }
+        if (winSound != null) {
+            winSound.release();
+            winSound = null;
         }
     }
 }

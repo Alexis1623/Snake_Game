@@ -13,7 +13,7 @@ public class GameActivity extends AppCompatActivity {
     private static final String TAG = "GameActivity";
 
     private GameView gameView;
-    private TextView scoreText;
+    private TextView scoreText, coinsText;
     private Button btnUp, btnDown, btnLeft, btnRight;
 
     @Override
@@ -27,6 +27,7 @@ public class GameActivity extends AppCompatActivity {
             // Inicializar vistas
             gameView = findViewById(R.id.gameView);
             scoreText = findViewById(R.id.scoreText);
+            coinsText = findViewById(R.id.coinsText);
             btnUp = findViewById(R.id.btnUp);
             btnDown = findViewById(R.id.btnDown);
             btnLeft = findViewById(R.id.btnLeft);
@@ -38,7 +39,7 @@ public class GameActivity extends AppCompatActivity {
                 return;
             }
 
-            if (scoreText == null || btnUp == null || btnDown == null || btnLeft == null || btnRight == null) {
+            if (scoreText == null || coinsText == null || btnUp == null || btnDown == null || btnLeft == null || btnRight == null) {
                 Log.e(TAG, "Alguna vista es null!");
             }
 
@@ -47,9 +48,10 @@ public class GameActivity extends AppCompatActivity {
 
             // Configurar toque para reiniciar
             gameView.setOnTouchListener((v, event) -> {
-                if (gameView.isGameOver() && event.getAction() == MotionEvent.ACTION_DOWN) {
+                if ((gameView.isGameOver() || gameView.isGameWon()) && event.getAction() == MotionEvent.ACTION_DOWN) {
                     gameView.restartGame();
                     updateScore();
+                    updateCoins();
                     return true;
                 }
                 return false;
@@ -102,7 +104,10 @@ public class GameActivity extends AppCompatActivity {
             while (!isFinishing()) {
                 try {
                     Thread.sleep(100);
-                    runOnUiThread(this::updateScore);
+                    runOnUiThread(() -> {
+                        updateScore();
+                        updateCoins();
+                    });
                 } catch (Exception e) {
                     Log.e(TAG, "Error en hilo de score: " + e.getMessage());
                     break;
@@ -113,7 +118,15 @@ public class GameActivity extends AppCompatActivity {
 
     private void updateScore() {
         if (scoreText != null && gameView != null) {
-            scoreText.setText("SCORE: " + gameView.getScore());
+            scoreText.setText("SCORE: " + gameView.getScore() + "/350");
+        }
+    }
+
+    private void updateCoins() {
+        if (coinsText != null) {
+            SharedPreferences prefs = getSharedPreferences("SnakePrefs", MODE_PRIVATE);
+            int coins = prefs.getInt("coins", 0);
+            coinsText.setText("MONEDAS: " + coins);
         }
     }
 
