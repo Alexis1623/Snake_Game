@@ -118,8 +118,7 @@ public class GameActivity extends AppCompatActivity {
 
     private void updateScore() {
         if (scoreText != null && gameView != null) {
-            scoreText.setText("SCORE: " + gameView.getScore() + "/350");
-        }
+            scoreText.setText("SCORE: " + gameView.getScore() + "/250");}
     }
 
     private void updateCoins() {
@@ -136,6 +135,16 @@ public class GameActivity extends AppCompatActivity {
         Log.d(TAG, "GameActivity en pausa");
         if (gameView != null) {
             gameView.stopGame();
+            gameView.pauseBackgroundMusic();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "GameActivity en resume");
+        if (gameView != null && !gameView.isGameWon()) {
+            gameView.resumeBackgroundMusic();
         }
     }
 

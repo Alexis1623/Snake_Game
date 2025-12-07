@@ -35,7 +35,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private static final int GRID_HEIGHT = 20;
 
     // Meta del juego
-    private static final int WIN_SCORE = 350;
+    private static final int WIN_SCORE = 250;
 
     // La serpiente: lista de segmentos (cada uno es un punto en la cuadrícula)
     private List<Point> snake;
@@ -47,7 +47,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     // Control del tiempo entre frames
     private long lastUpdateTime = 0;
-    private static final long UPDATE_INTERVAL = 200;
+    private static final long UPDATE_INTERVAL = 190;
 
     // Monedas y sistema relacionado
     private int coins = 0;
@@ -647,7 +647,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             aliensActive = false;
         }
 
-        // FASE 1: Enemigos básicos (30-129 puntos)
+        // FASE 1: Enemigo s básicos (30-129 puntos)
         if (score >= 30 && score < 130) {
             enemiesActive = true;
 
@@ -669,9 +669,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
             if (score >= 130 && score < 150) {
                 maxEnemies = 3;
-            } else if (score >= 150 && score < 170) {
+            } else if (score >= 160 && score < 200) {
                 maxEnemies = 5;
-            } else if (score >= 170) {
+            } else if (score >= 230) {
                 maxEnemies = 7;
             }
 
@@ -682,7 +682,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
 
         // FASE 3: Solo comida (181-299 puntos)
-        else if (score >= 181 && score < 300) {
+        else if (score >= 180 && score < 200) {
             enemies.clear();
             aliens.clear();
             enemiesActive = false;
@@ -691,17 +691,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             maxAliens = 0;
         }
 
-        // FASE 4: Aliens (300-350 puntos)
-        else if (score >= 300 && score <= 350) {
+        // FASE 4: Aliens (300 puntos)
+        else if (score >= 220 && score <= 250) {
             aliensActive = true;
 
-            if (score >= 300 && score < 320) {
-                maxAliens = 2;
-            } else if (score >= 320 && score < 340) {
-                maxAliens = 4;
-            } else if (score >= 340) {
-                maxAliens = 6;
+            if (score >= 220 && score < 250) {
+                maxAliens = 3;
             }
+
 
             // Limpiar enemigos
             enemies.clear();
@@ -744,7 +741,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
+    // método playWinSound:
     private void playWinSound() {
+        // DETENER completamente la música de fondo
+        if (transitionSound != null && transitionSound.isPlaying()) {
+            transitionSound.stop();
+            transitionSound.seekTo(0);
+        }
+
+        // Reproducir sonido de victoria
         if (winSound != null) {
             try {
                 winSound.seekTo(0);
@@ -1247,7 +1252,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private String getDifficultyText() {
-        if (score >= 300 && score <= 350) {
+        if (score >= 210 && score <= 250) {
             return "Nivel: Aliens x" + aliens.size();
         } else if (score >= 130 && score <= 180) {
             return "Nivel: Enemigos x" + enemies.size();
@@ -1262,10 +1267,31 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
+    // Método restartGame para reiniciar la música:
     public void restartGame() {
         initGame();
+
+        // Reiniciar música SOLO si no está sonando
+        if (transitionSound != null && !transitionSound.isPlaying()) {
+            try {
+                transitionSound.seekTo(0);
+                transitionSound.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    public void pauseBackgroundMusic() {
+        if (transitionSound != null && transitionSound.isPlaying()) {
+            transitionSound.pause();
+        }
     }
 
+    public void resumeBackgroundMusic() {
+        if (transitionSound != null && !transitionSound.isPlaying() && !gameWon) {
+            transitionSound.start();
+        }
+    }
     public void setDirectionUp() {
         if (currentDirection != Direction.DOWN && !gameOver && !isBurning && !gameWon) {
             nextDirection = Direction.UP;
