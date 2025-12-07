@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.media.MediaPlayer;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import java.util.ArrayList;
@@ -88,71 +89,73 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private int maxEnemies = 0;
     private boolean enemiesActive = false;
 
-    // ============ SISTEMA DE ASTEROIDES ============
-    private List<Asteroid> asteroids;
-    private int maxAsteroids = 0;
-    private boolean asteroidsActive = false;
+    // ============ SISTEMA DE ALIENS ============
+    private List<Alien> aliens;
+    private int maxAliens = 0;
+    private boolean aliensActive = false;
 
-    // ============ CLASE ASTEROIDE ============
-    private class Asteroid {
+    // ============ CLASE ALIEN ============
+    private class Alien {
         Point position;
         int speed;
-        int directionX; // -1 izquierda, 1 derecha, 0 estático
-        int directionY; // -1 arriba, 1 abajo, 0 estático
-        int size; // 1 = pequeño, 2 = mediano, 3 = grande
+        android.graphics.Bitmap alienBitmap;
 
-        Asteroid(Point pos, int speed, int dirX, int dirY, int size) {
-            this.position = pos;
+        Alien(Point startPos, int speed) {
+            this.position = startPos;
             this.speed = speed;
-            this.directionX = dirX;
-            this.directionY = dirY;
-            this.size = size;
+
+            // Cargar la imagen del alien
+            try {
+                alienBitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.alien);
+                if (alienBitmap != null) {
+                    // Escalar la imagen al tamaño adecuado
+                    int newWidth = dynamicBlockSize;
+                    int newHeight = dynamicBlockSize;
+                    alienBitmap = android.graphics.Bitmap.createScaledBitmap(alienBitmap, newWidth, newHeight, true);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                alienBitmap = null;
+            }
         }
 
         void move() {
-            for (int i = 0; i < speed; i++) {
-                position.x += directionX;
-                position.y += directionY;
+            // Los aliens solo caen hacia abajo (vertical)
+            position.y += speed;
 
-                // Rebotar en los bordes
-                if (position.x <= 0 || position.x >= GRID_WIDTH - 1) {
-                    directionX *= -1;
-                    position.x = Math.max(0, Math.min(GRID_WIDTH - 1, position.x));
-                }
-
-                if (position.y <= 0 || position.y >= GRID_HEIGHT - 1) {
-                    directionY *= -1;
-                    position.y = Math.max(0, Math.min(GRID_HEIGHT - 1, position.y));
-                }
+            // Si el alien sale por abajo, reaparece arriba
+            if (position.y >= GRID_HEIGHT) {
+                position.y = 0;
+                position.x = random.nextInt(GRID_WIDTH);
             }
         }
 
         boolean collidesWith(Point point) {
-            // Colisión basada en el tamaño del asteroide
-            int halfSize = size / 2;
-            return point.x >= position.x - halfSize &&
-                    point.x <= position.x + halfSize &&
-                    point.y >= position.y - halfSize &&
-                    point.y <= position.y + halfSize;
+            // Colisión simple (mismo cuadrado)
+            return position.equals(point);
         }
 
         void draw(Canvas canvas) {
-            // Color de asteroide (grises)
-            paint.setColor(Color.parseColor("#808080"));
-
-            // Dibujar asteroide redondeado - CORREGIDO: agregar casting a int
-            int centerX = gameAreaOffsetX + (int)((position.x + 0.5f) * dynamicBlockSize);
-            int centerY = gameAreaOffsetY + (int)((position.y + 0.5f) * dynamicBlockSize);
-            int radius = dynamicBlockSize * size / 3;
-
-            canvas.drawCircle(centerX, centerY, radius, paint);
-
-            // Detalles del asteroide
-            paint.setColor(Color.DKGRAY);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2);
-            canvas.drawCircle(centerX, centerY, radius, paint);
-            paint.setStyle(Paint.Style.FILL);
+            if (alienBitmap != null) {
+                // Dibujar la imagen del alien
+                Rect alienRect = new Rect(
+                        gameAreaOffsetX + position.x * dynamicBlockSize,
+                        gameAreaOffsetY + position.y * dynamicBlockSize,
+                        gameAreaOffsetX + (position.x + 1) * dynamicBlockSize,
+                        gameAreaOffsetY + (position.y + 1) * dynamicBlockSize
+                );
+                canvas.drawBitmap(alienBitmap, null, alienRect, paint);
+            } else {
+                // Si no hay imagen, dibujar un cuadrado verde
+                paint.setColor(Color.GREEN);
+                Rect alienRect = new Rect(
+                        gameAreaOffsetX + position.x * dynamicBlockSize,
+                        gameAreaOffsetY + position.y * dynamicBlockSize,
+                        gameAreaOffsetX + (position.x + 1) * dynamicBlockSize,
+                        gameAreaOffsetY + (position.y + 1) * dynamicBlockSize
+                );
+                canvas.drawRect(alienRect, paint);
+            }
         }
     }
 
@@ -443,7 +446,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         initWinSound();
 
         enemies = new ArrayList<>();
-        asteroids = new ArrayList<>();
+        aliens = new ArrayList<>();
 
         initGame();
     }
@@ -461,7 +464,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     private void initWinSound() {
         try {
-            winSound = MediaPlayer.create(getContext(), R.raw.win_sound); // Necesitarás agregar este archivo
+            winSound = MediaPlayer.create(getContext(), R.raw.win_sound);
             if (winSound != null) {
                 winSound.setVolume(1.0f, 1.0f);
             }
@@ -493,11 +496,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         generateFood();
 
         enemies.clear();
-        asteroids.clear();
+        aliens.clear();
         maxEnemies = 0;
-        maxAsteroids = 0;
+        maxAliens = 0;
         enemiesActive = false;
-        asteroidsActive = false;
+        aliensActive = false;
         isBurning = false;
         burnAnimation = null;
 
@@ -539,10 +542,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 }
             }
 
-            // Verificar colisión con asteroides
-            if (!collision && asteroidsActive) {
-                for (Asteroid asteroid : asteroids) {
-                    if (asteroid.collidesWith(food)) {
+            // Verificar colisión con aliens
+            if (!collision && aliensActive) {
+                for (Alien alien : aliens) {
+                    if (alien.collidesWith(food)) {
                         collision = true;
                         break;
                     }
@@ -555,49 +558,18 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         isGolden = random.nextFloat() < 0.2;
     }
 
-    private void generateAsteroid() {
-        int attempts = 0;
-        while (attempts < 50) {
-            int x = random.nextInt(GRID_WIDTH);
-            int y = random.nextInt(GRID_HEIGHT);
-            Point pos = new Point(x, y);
+    private void generateAlien() {
+        // Alien aparece en la parte superior (y = 0) en posición aleatoria X
+        int startX = random.nextInt(GRID_WIDTH);
+        Point startPos = new Point(startX, 0);
 
-            // Verificar que no esté muy cerca de la serpiente
-            boolean tooClose = false;
-            for (Point segment : snake) {
-                int distance = Math.abs(segment.x - x) + Math.abs(segment.y - y);
-                if (distance < 3) {
-                    tooClose = true;
-                    break;
-                }
-            }
+        // Velocidad aleatoria entre 1-3
+        int speed = random.nextInt(2) + 1;
 
-            if (tooClose) {
-                attempts++;
-                continue;
-            }
+        Alien alien = new Alien(startPos, speed);
+        aliens.add(alien);
 
-            // Verificar colisión con comida
-            if (food != null && (Math.abs(food.x - x) < 2 && Math.abs(food.y - y) < 2)) {
-                attempts++;
-                continue;
-            }
-
-            // Crear asteroide con propiedades aleatorias
-            int speed = random.nextInt(2) + 1; // 1-2
-            int dirX = random.nextInt(3) - 1; // -1, 0, 1
-            int dirY = random.nextInt(3) - 1; // -1, 0, 1
-            int size = random.nextInt(3) + 1; // 1-3
-
-            // Asegurar que se mueva en alguna dirección
-            if (dirX == 0 && dirY == 0) {
-                dirX = random.nextBoolean() ? 1 : -1;
-            }
-
-            Asteroid asteroid = new Asteroid(pos, speed, dirX, dirY, size);
-            asteroids.add(asteroid);
-            return;
-        }
+        Log.d("GameView", "Alien generado en (" + startX + ", 0). Total aliens: " + aliens.size());
     }
 
     private void generateEnemy() {
@@ -638,9 +610,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 collision = true;
             }
 
-            // Con asteroides
-            for (Asteroid asteroid : asteroids) {
-                if (asteroid.collidesWith(startPos)) {
+            // Con aliens
+            for (Alien alien : aliens) {
+                if (alien.collidesWith(startPos)) {
                     collision = true;
                     break;
                 }
@@ -658,6 +630,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
             if (!collision) {
                 enemies.add(newEnemy);
+                Log.d("GameView", "Enemigo generado. Total: " + enemies.size());
                 return;
             }
 
@@ -665,86 +638,112 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
     }
 
+    private void manageEnemiesAndAliens() {
+        // RESETEAR CONTADORES AL CAMBIAR DE FASE
+        if (score < 30) {
+            maxEnemies = 0;
+            maxAliens = 0;
+            enemiesActive = false;
+            aliensActive = false;
+        }
 
-    private void manageEnemiesAndAsteroids() {
-        // GESTIÓN DE ENEMIGOS EXISTENTES (30-90 puntos) - NO SOBREESCRIBIR
+        // FASE 1: Enemigos básicos (30-129 puntos)
         if (score >= 30 && score < 130) {
-            if (!enemiesActive) {
-                enemiesActive = true;
-            }
+            enemiesActive = true;
 
-            // Enemigos progresivos del sistema original
-            if (score >= 30 && maxEnemies < 1) {
+            if (score >= 30 && score < 90) {
                 maxEnemies = 1;
-            }
-
-            if (score >= 90 && maxEnemies < 2) {
+            } else if (score >= 90 && score < 130) {
                 maxEnemies = 2;
             }
+
+            // Limpiar aliens si los hubiera
+            aliens.clear();
+            aliensActive = false;
+            maxAliens = 0;
         }
 
-        // GESTIÓN DE ENEMIGOS (130-180 puntos) - FASE 2
-        if (score >= 130 && score <= 180) {
-            if (!enemiesActive) {
-                enemiesActive = true;
-            }
+        // FASE 2: Más enemigos (130-180 puntos)
+        else if (score >= 130 && score <= 180) {
+            enemiesActive = true;
 
-            // Aumentar enemigos progresivamente en esta fase
-            if (score >= 130 && score < 150 && maxEnemies < 3) {
+            if (score >= 130 && score < 150) {
                 maxEnemies = 3;
-            }
-
-            if (score >= 150 && score < 170 && maxEnemies < 5) {
+            } else if (score >= 150 && score < 170) {
                 maxEnemies = 5;
-            }
-
-            if (score >= 170 && maxEnemies < 7) {
+            } else if (score >= 170) {
                 maxEnemies = 7;
             }
+
+            // Limpiar aliens
+            aliens.clear();
+            aliensActive = false;
+            maxAliens = 0;
         }
 
-        // DESACTIVAR ENEMIGOS AL ENTRAR EN FASE DE ASTEROIDES
-        if (score > 180 && score <= 230) {
+        // FASE 3: Solo comida (181-299 puntos)
+        else if (score >= 181 && score < 300) {
+            enemies.clear();
+            aliens.clear();
+            enemiesActive = false;
+            aliensActive = false;
+            maxEnemies = 0;
+            maxAliens = 0;
+        }
+
+        // FASE 4: Aliens (300-350 puntos)
+        else if (score >= 300 && score <= 350) {
+            aliensActive = true;
+
+            if (score >= 300 && score < 320) {
+                maxAliens = 2;
+            } else if (score >= 320 && score < 340) {
+                maxAliens = 4;
+            } else if (score >= 340) {
+                maxAliens = 6;
+            }
+
+            // Limpiar enemigos
+            enemies.clear();
             enemiesActive = false;
             maxEnemies = 0;
         }
 
-        // GESTIÓN DE ASTEROIDES (180-230 puntos)
-        if (score >= 180 && score <= 230) {
-            if (!asteroidsActive) {
-                asteroidsActive = true;
-                maxAsteroids = 3;
-            }
-
-            // Aumentar asteroides progresivamente
-            if (score >= 200 && score < 220 && maxAsteroids < 5) {
-                maxAsteroids = 5;
-            }
-
-            if (score >= 220 && maxAsteroids < 7) {
-                maxAsteroids = 7;
-            }
-        } else if (score > 230) {
-            asteroidsActive = false;
-            maxAsteroids = 0;
+        // FASE 5: Solo comida (351-499 puntos)
+        else if (score >= 351 && score < WIN_SCORE) {
+            enemies.clear();
+            aliens.clear();
+            enemiesActive = false;
+            aliensActive = false;
+            maxEnemies = 0;
+            maxAliens = 0;
         }
 
-        // VICTORIA (500 puntos)
+        // VICTORIA
         if (score >= WIN_SCORE && !gameWon) {
             gameWon = true;
             playWinSound();
+            enemies.clear();
+            aliens.clear();
         }
 
         // Generar enemigos si están activos
-        while (enemies.size() < maxEnemies && enemiesActive) {
-            generateEnemy();
+        if (enemiesActive) {
+            while (enemies.size() < maxEnemies) {
+                generateEnemy();
+                if (enemies.size() >= maxEnemies) break;
+            }
         }
 
-        // Generar asteroides si están activos
-        while (asteroids.size() < maxAsteroids && asteroidsActive) {
-            generateAsteroid();
+        // Generar aliens si están activos
+        if (aliensActive) {
+            while (aliens.size() < maxAliens) {
+                generateAlien();
+                if (aliens.size() >= maxAliens) break;
+            }
         }
     }
+
     private void playWinSound() {
         if (winSound != null) {
             try {
@@ -761,7 +760,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         burnStartTime = System.currentTimeMillis();
         burnAnimation = new BurnAnimation(position);
 
-        // REPRODUCIR SONIDO DE EXPLOSIÓN - CORREGIDO
+        // REPRODUCIR SONIDO DE EXPLOSIÓN
         if (burnSound != null) {
             try {
                 // Detener si está sonando
@@ -892,17 +891,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         currentDirection = nextDirection;
 
-        // Gestionar enemigos y asteroides
-        manageEnemiesAndAsteroids();
+        // Gestionar enemigos y aliens
+        manageEnemiesAndAliens();
 
         // Mover enemigos
         for (EnemySnake enemy : enemies) {
             enemy.move();
         }
 
-        // Mover asteroides
-        for (Asteroid asteroid : asteroids) {
-            asteroid.move();
+        // Mover aliens
+        for (Alien alien : aliens) {
+            alien.move();
         }
 
         // Verificar colisión con enemigos
@@ -915,9 +914,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             }
         }
 
-        // Verificar colisión con asteroides
-        for (Asteroid asteroid : asteroids) {
-            if (asteroid.collidesWith(head)) {
+        // Verificar colisión con aliens
+        for (Alien alien : aliens) {
+            if (alien.collidesWith(head)) {
                 startBurnAnimation(head);
                 return;
             }
@@ -1046,9 +1045,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         );
         canvas.drawRect(foodRect, paint);
 
-        // DIBUJAR ASTEROIDES
-        for (Asteroid asteroid : asteroids) {
-            asteroid.draw(canvas);
+        // DIBUJAR ALIENS
+        for (Alien alien : aliens) {
+            alien.draw(canvas);
         }
 
         // DIBUJAR ENEMIGOS (serpientes completas)
@@ -1248,14 +1247,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private String getDifficultyText() {
-        if (score >= 180 && score <= 230) {
-            return "Nivel: Asteroides";
+        if (score >= 300 && score <= 350) {
+            return "Nivel: Aliens x" + aliens.size();
         } else if (score >= 130 && score <= 180) {
-            return "Nivel: Enemigos x" + maxEnemies;
-        } else if (score >= 90 && score <= 130) {
-            return "Nivel: Enemigos x" + maxEnemies;
-        } else if (score >= 30 && score <= 90) {
-            return "Nivel: Enemigos x1";
+            return "Nivel: Enemigos x" + enemies.size();
+        } else if (score >= 90 && score < 130) {
+            return "Nivel: Enemigos x" + enemies.size();
+        } else if (score >= 30 && score < 90) {
+            return "Nivel: Enemigos x" + enemies.size();
         } else if (score >= 50) {
             return "Nivel: Fondo cambiado";
         } else {
