@@ -8,7 +8,6 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,7 +18,11 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -27,7 +30,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -48,6 +50,7 @@ public class ScoresActivity extends AppCompatActivity {
 
     // Geolocalización
     private FusedLocationProviderClient fusedLocationClient;
+    private LocationCallback locationCallback;
     private String userCountry = "Unknown";
 
     @Override
@@ -120,17 +123,63 @@ public class ScoresActivity extends AppCompatActivity {
             return;
         }
 
+        Log.d(TAG, "Obteniendo ubicación del usuario...");
+
+        // Primero intentar con la última ubicación conocida
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, location -> {
                     if (location != null) {
+                        Log.d(TAG, "Última ubicación obtenida: " + location.getLatitude() + ", " + location.getLongitude());
                         getCountryFromLocation(location);
                     } else {
-                        Log.w(TAG, "No se pudo obtener ubicación. Usando país guardado: " + userCountry);
+                        // Si no hay última ubicación, solicitar una actualización
+                        Log.d(TAG, "No hay última ubicación, solicitando actualización...");
+                        requestNewLocationForScores();
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo ubicación: " + e.getMessage());
+                    Log.e(TAG, "Error obteniendo última ubicación: " + e.getMessage());
+                    // Intentar solicitar nueva ubicación
+                    requestNewLocationForScores();
                 });
+    }
+
+    private void requestNewLocationForScores() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        // Crear LocationRequest para obtener ubicación actualizada
+        LocationRequest locationRequest = new LocationRequest.Builder(
+                Priority.PRIORITY_HIGH_ACCURACY, 10000)
+                .setWaitForAccurateLocation(false)
+                .setMinUpdateIntervalMillis(5000)
+                .setMaxUpdateDelayMillis(10000)
+                .build();
+
+        // Crear callback para recibir la ubicación
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    Log.d(TAG, "Nueva ubicación obtenida: " + location.getLatitude() + ", " + location.getLongitude());
+                    getCountryFromLocation(location);
+                    // Detener actualizaciones después de obtener la primera
+                    fusedLocationClient.removeLocationUpdates(locationCallback);
+                }
+            }
+        };
+
+        // Solicitar actualizaciones de ubicación
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+
+        // Configurar timeout para detener las actualizaciones después de 30 segundos
+        new android.os.Handler().postDelayed(() -> {
+            Log.w(TAG, "Timeout: No se pudo obtener ubicación actualizada. Usando país guardado: " + userCountry);
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }, 30000);
     }
 
     private void getCountryFromLocation(Location location) {
@@ -370,5 +419,14 @@ public class ScoresActivity extends AppCompatActivity {
         scoresList.add(new Score(1, errorMsg, 0));
         scoresList.add(new Score(2, "Intenta más tarde", 0));
         adapter.notifyDataSetChanged();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Limpiar las actualizaciones de ubicación para evitar memory leaks
+        if (locationCallback != null && fusedLocationClient != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
     }
 }

@@ -195,6 +195,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         Log.d(TAG, "Botón back presionado - Cerrando aplicación");
+        super.onBackPressed();
         stopMusicService();
         finishAffinity(); // Cierra toda la aplicación
     }
